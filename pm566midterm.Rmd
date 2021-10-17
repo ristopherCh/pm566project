@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(httr)
+library(xml2)
 ```
 
 From: 
@@ -66,10 +67,71 @@ dimensionvalues <- do.call(rbind, dimensionvalues)
 head(dimensionvalues)
 ```
 
+Retrieving a list of available indicators
+```{r}
+indicatorsquery <- GET(
+  url = "https://ghoapi.azureedge.net/api/Indicator/"
+)
 
-    Code            = b$Code,
-    Title           = b$Title,
-    Dimension       = b$Dimension,
-    ParentDimension = b$ParentDimension,
-    ParentCode      = b$ParentCode,
-    ParentTitle     = b$ParentTitle
+indicatorsquery$status_code
+
+indicators <- content(indicatorsquery, "parsed")
+
+indicators <- lapply(indicators$value, function(c){
+  data.frame(
+    IndicatorCode  = c$IndicatorCode,
+    IndicatorName  = c$IndicatorName,
+    Language       = c$Language
+  )
+})
+indicators <- do.call(rbind, indicators)
+head(dimensionvalues)
+```
+
+Retrieving indicator (malaria example) data
+```{r}
+malariaquery <- GET(
+  url = "https://ghoapi.azureedge.net/api/MALARIA002/"
+)
+
+malariaquery$status_code
+
+malaria <- content(malariaquery, "parsed")
+
+malaria$value[[1]]$Id
+
+#Too complicated at this point
+```
+
+Retrieving indicators from The World Bank API
+https://datahelpdesk.worldbank.org/knowledgebase/articles/898599-indicator-api-queries
+```{r}
+WBindicatorsquery <- GET(
+  url = "http://api.worldbank.org/v2/country/all/indicator/SP.POP.TOTL"
+)
+
+WBindicatorsquery$status_code
+
+WBindicators <- content(WBindicatorsquery, "parsed")
+
+WBindicators <- as_list(WBindicators)
+
+WBindicators2 <- lapply(WBindicators$data$data, function(d){
+  data.frame(
+    Indicator = d$indicator
+  )
+})
+
+#Below doesn't work yet
+#WBindicators3 <- do.call(rbind, WBindicators)
+```
+
+indicators <- lapply(indicators$value, function(c){
+  data.frame(
+    IndicatorCode  = c$IndicatorCode,
+    IndicatorName  = c$IndicatorName,
+    Language       = c$Language
+  )
+})
+indicators <- do.call(rbind, indicators)
+head(dimensionvalues)
