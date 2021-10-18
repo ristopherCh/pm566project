@@ -1,0 +1,81 @@
+---
+title: "pm566projectggvy"
+author: "Chris Hanson"
+date: "10/17/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+George's WHO code
+```{r}
+# Retrieving dimensions --------------------------------------------------------
+dim_url <- "https://ghoapi.azureedge.net/api/Dimension"
+
+res <- GET(dim_url)
+
+# Processing data
+who_dims <- content(res)
+
+# The data is in the second element of the list
+# My note: rbindlist is "same as do.call(rbind, x) but for data.table.
+who_dims <- rbindlist(who_dims[[2]])
+
+# Sneak peak
+head(who_dims)
+
+# Retrieving values for a specific dim ------------------------------------------
+vals_url <- "https://ghoapi.azureedge.net/api/DIMENSION/COUNTRY/DimensionValues"
+
+res <- GET(vals_url)
+
+# Same as before, the data is the second element
+who_vals <- content(res)
+who_vals <- rbindlist(who_vals[[2]])
+#> Warning in rbindlist(who_vals[[2]]): Column 3 ['ParentDimension'] of item 241
+#> is length 0. This (and 14 others like it) has been filled with NA (NULL for list
+#> columns) to make each item uniform.
+
+# Sneak peak
+head(who_vals)
+
+# This returns the values of the countries, so we will
+# use that with the list of dimensions to get a specific value
+
+# Getting indicator data -------------------------------------------------------
+indic_url <- "https://ghoapi.azureedge.net/api/Indicator"
+res <- GET(indic_url)
+
+# Same as before
+who_indic <- content(res)
+who_indic <- rbindlist(who_indic[[2]])
+
+# Child cause of death in the US -----------------------------------------------
+
+#IndicatorCode: CHILDMORT5TO14
+#SpatialDim: USA
+
+# Creating the URL
+child_url <- "https://ghoapi.azureedge.net/api/CHILDMORT5TO14?$filter=SpatialDim%20eq%20%27USA%27"
+
+res <- GET(child_url)
+
+# Same as before
+who_child <- content(res)
+who_child <- rbindlist(who_child[[2]])
+
+print(who_child)
+
+library(ggplot2)
+ggplot(who_child, aes(x = TimeDim, y = NumericValue)) +
+  geom_line() +
+  labs(
+    title = "Mortality rate for 5-14 year-olds (probability of dying per 1000 children aged 5-14 years)",
+    x = "Year",
+    y = "Rate",
+    subtitle = "Source: WHO API (Retrieved on October 17, 2021)"
+    
+  )
+```

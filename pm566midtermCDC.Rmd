@@ -1,0 +1,109 @@
+---
+title: "pm566midtermCDC"
+author: "Chris Hanson"
+date: "10/18/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(httr)
+library(xml2)
+library(data.table)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(tidyverse)
+library(dtplyr)
+```
+
+```{r }
+# Retrieving dimensions
+# https://data.cdc.gov/NCHS/VSRR-Provisional-Drug-Overdose-Death-Counts/xkb8-kh2a
+
+cdcdrugsquery <- GET(
+  url = "https://data.cdc.gov/resource/xkb8-kh2a.json?$limit=50000"
+)
+
+#https://data.cdc.gov/resource/xkb8-kh2a.json?$limit=50000
+
+# Checking if the website is active
+cdcdrugsquery$status_code
+
+# Processing data
+cdc_drugs_content <- content(cdcdrugsquery)
+
+# The data is in the second element of the "dimensions" list.
+# This really makes a nice data frame.
+#cdc2 <- do.call(rbind, cdc[1])
+
+cdc_drugs <- rbindlist(cdc_drugs_content[1:length(cdc_drugs_content)], fill=TRUE)
+# dimensions <- rbindlist(dimensions[[2]]) #equivalently
+```
+
+```{r cdc_drugs-processing}
+# Let's get a proper date time value!
+#cdc_drugs$date <- format(as.Date(paste0(cdc_drugs$year, cdc_drugs$month, "01"), format="%Y%B%d"), "%Y-%m")
+
+cdc_drugs$date <- as.Date(paste0(cdc_drugs$year, cdc_drugs$month, "01"), format="%Y%B%d")
+cdc_drugs$data_value <- as.numeric(cdc_drugs$data_value)
+```
+
+
+```{r}
+# This is a good consistent indicator
+cdc_od_deaths <- cdc_drugs[indicator == "Number of Drug Overdose Deaths"]
+cdc_od_cali <- cdc_od_deaths[state_name == "California"]
+
+
+cdc_od_deaths2 <- cdc_od_deaths[state_name != "United States"]
+ggplot(cdc_od_deaths2, aes(x = date, y = data_value, color = state_name)) +
+  geom_line()
+
+
+ggplot(cdc_od_deaths[state_name == "Nebraska"], aes(x = date, y = data_value)) +
+  geom_line()
+```
+
+
+```{r increase-drugs-by-state}
+# Increase from January 2015 to March 2021
+# This is the Y axis of a number of interesting charts
+od_min <- cdc_od_deaths[ , .SD[which.min(date)], by = state_name]
+od_max <- cdc_od_deaths[ , .SD[which.max(date)], by = state_name]
+od_dif <- od_max$data_value - od_min$data_value
+od_perc_inc <- od_dif / od_min$data_value
+od_min$inc <- od_perc_inc
+
+head(od_min)
+```
+
+```{r covid-vs-time}
+
+# Retrieving dimensions
+
+
+covidquery <- GET(
+  url = "https://data.cdc.gov/resource/9mfq-cb36.json"
+)
+
+
+
+# Checking if the website is active
+covidquery$status_code
+
+# Processing data
+covid_content <- content(covidquery)
+
+# The data is in the second element of the "dimensions" list.
+# This really makes a nice data frame.
+#cdc2 <- do.call(rbind, cdc[1])
+
+cdc_drugs <- rbindlist(cdc_drugs_content[1:length(cdc_drugs_content)], fill=TRUE)
+# dimensions <- rbindlist(dimensions[[2]]) #equivalently
+```
+
+

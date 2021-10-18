@@ -103,22 +103,27 @@ malaria$value[[1]]$Id
 #Too complicated at this point
 ```
 
-Retrieving indicators from The World Bank API
+Retrieving from The World Bank API
 https://datahelpdesk.worldbank.org/knowledgebase/articles/898599-indicator-api-queries
 ```{r}
 WBindicatorsquery <- GET(
-  url = "http://api.worldbank.org/v2/country/all/indicator/SP.POP.TOTL"
+  url = "http://api.worldbank.org/v2/indicator/NY.GDP.MKTP.CD?source=11"
 )
 
 WBindicatorsquery$status_code
 
-WBindicators <- content(WBindicatorsquery, "parsed")
+WBI <- content(WBindicatorsquery, "text")
 
-WBindicators <- as_list(WBindicators)
+WBI2 <- read_xml(WBI)
 
-WBindicators2 <- lapply(WBindicators$data$data, function(d){
+WBI3 <- as_list(WBI2)
+
+
+
+WBindicators3 <- lapply(WBindicators$data$data, function(d){
   data.frame(
-    Indicator = d$indicator
+    Indicator = d$indicator[[1]],
+    Country   = d$country[[1]]
   )
 })
 
