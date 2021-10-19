@@ -13,11 +13,11 @@ knitr::opts_chunk$set(echo = TRUE)
 library(httr)
 library(xml2)
 library(data.table)
-library(dplyr)
-library(lubridate)
+# library(lubridate)
 library(ggplot2)
 library(tidyverse)
 library(dtplyr)
+library(rvest)
 ```
 
 ```{r }
@@ -61,11 +61,12 @@ cdc_od_cali <- cdc_od_deaths[state_name == "California"]
 
 cdc_od_deaths2 <- cdc_od_deaths[state_name != "United States"]
 ggplot(cdc_od_deaths2, aes(x = date, y = data_value, color = state_name)) +
-  geom_line()
+  geom_line()+
+  labs(title = "Deaths by overdose")
 
 
 ggplot(cdc_od_deaths[state_name == "Nebraska"], aes(x = date, y = data_value)) +
-  geom_line()
+  geom_line() 
 ```
 
 
@@ -82,15 +83,11 @@ head(od_min)
 ```
 
 ```{r covid-vs-time}
-
 # Retrieving dimensions
-
 
 covidquery <- GET(
   url = "https://data.cdc.gov/resource/9mfq-cb36.json?$limit=50000"
 )
-
-
 
 # Checking if the website is active
 covidquery$status_code
@@ -98,12 +95,7 @@ covidquery$status_code
 # Processing data
 covid_content <- content(covidquery)
 
-# The data is in the second element of the "dimensions" list.
-# This really makes a nice data frame.
-#cdc2 <- do.call(rbind, cdc[1])
-
 covid <- rbindlist(covid_content[1:length(covid_content)], fill=TRUE)
-# dimensions <- rbindlist(dimensions[[2]]) #equivalently
 ```
 
 ```{r}
@@ -115,8 +107,40 @@ ca_covid$date <- as.Date(ca_covid$submission_date)
 ca_covid$tot_death <- as.numeric(ca_covid$tot_death)
 
 ggplot(ca_covid, aes(x = date, y = tot_death)) +
-  geom_line()
+  geom_line() +
+  labs(title = "Total covid deaths in California")
 
 ```
 
+```{r API-census-population}
+# https://www.census.gov/data/developers/guidance/api-user-guide.Example_API_Queries.html
+# Retrieving dimensions
+
+censusquery <- GET(
+  url = "https://api.census.gov/data/2019/pep/population?get=NAME,POP&for=state:*"
+)
+
+# Checking if the website is active
+censusquery$status_code
+
+# Processing data
+census_content <- content(censusquery)
+
+census <- rbindlist(census_content)
+census <- census[order(V3)]
+
+#Getting state abbreviations, frustratingly
+abbrev <- read_html(x = "https://npiregistry.cms.hhs.gov/registry/API-State-Abbr")
+abtable <- xml_find_all(abbrev, xpath = "/html/body/div[2]/div[2]/div/div/div/div[2]/div[2]/div[1]/table")
+abtable <- html_table(abtable)
+abtable <- rbindlist(abtable)
+
+#Combining census and abtable data.tables
+census$V1 = toupper(census$V1)
+census <- merge(census, abtable, by.x = "V1", by.y = "State  Name")
+
+#Combining census and covid data.tables
+covid2 <- merge(covid, census, by.x = "state", by.y = "State Abbreviation")
+#Good, need to rename "V2" to "population"
+```
 
