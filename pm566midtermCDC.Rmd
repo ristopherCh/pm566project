@@ -87,7 +87,7 @@ head(od_min)
 
 
 covidquery <- GET(
-  url = "https://data.cdc.gov/resource/9mfq-cb36.json"
+  url = "https://data.cdc.gov/resource/9mfq-cb36.json?$limit=50000"
 )
 
 
@@ -102,8 +102,21 @@ covid_content <- content(covidquery)
 # This really makes a nice data frame.
 #cdc2 <- do.call(rbind, cdc[1])
 
-cdc_drugs <- rbindlist(cdc_drugs_content[1:length(cdc_drugs_content)], fill=TRUE)
+covid <- rbindlist(covid_content[1:length(covid_content)], fill=TRUE)
 # dimensions <- rbindlist(dimensions[[2]]) #equivalently
+```
+
+```{r}
+# let's just see covid in cali over time, for kicks
+# tot_death is total death
+ca_covid <- covid[state == "CA"]
+
+ca_covid$date <- as.Date(ca_covid$submission_date)
+ca_covid$tot_death <- as.numeric(ca_covid$tot_death)
+
+ggplot(ca_covid, aes(x = date, y = tot_death)) +
+  geom_line()
+
 ```
 
 
