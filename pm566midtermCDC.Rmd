@@ -92,7 +92,7 @@ ggplot(od_deaths2, aes(x = date, y = deaths_monthly, color = state_name)) +
   labs(title = "Deaths by overdose")
 
 # Plotting just one state without creating a new data.table first---------------
-ggplot(od_deaths[state_name == "NEBRASKA"], aes(x = date, y = deaths_monthly)) +
+ggplot(od_deaths[state_name == "ALABAMA"], aes(x = date, y = deaths_monthly)) +
   geom_line() +
   labs(title = "Montly OD deaths in Nebraska")
 ```
@@ -103,8 +103,8 @@ ggplot(od_deaths[state_name == "NEBRASKA"], aes(x = date, y = deaths_monthly)) +
 # (This could be the Y axis of a number of interesting charts)
 od_min <- od_deaths[ , .SD[which.min(date)], by = state_name]
 od_max <- od_deaths[ , .SD[which.max(date)], by = state_name]
-od_dif <- od_max$data_value - od_min$data_value
-od_perc_inc <- od_dif / od_min$data_value
+od_dif <- od_max$deaths_monthly - od_min$deaths_monthly
+od_perc_inc <- od_dif / od_min$deaths_monthly
 od_min$perc_inc <- od_perc_inc * 100
 ```
 
@@ -149,73 +149,31 @@ covid$death_perc <- covid$tot_death / covid$population
 ```{r}
 #Let's plot covid deaths by population percent----------------------------------
 ggplot(covid, aes(x = date, y = death_perc, color = state_name)) +
-  geom_line() 
+  geom_line(show.legend = FALSE) 
 
 # Quick and dirty plot of covid vs drug deaths----------------------------------
-# First, let's combine into a TEMPORARY data table.
-# But beforehand, a data table of covid total deaths of each state on the max date
+
 covid_latest <- covid[ , .SD[which.max(date)], by = state_name]
 #Here it is, covid_latest$death_perc
 
-#penny <- merge(covid_latest, od_min, by.x = "state", by.y = "state") 
-#ggplot(penny, aes(x = perc_inc, y = death_perc)) +
-#  geom_point() +
-#  labs(title = "")
-# I'd say the above was a failed experiment
+covid_od <- merge(covid_latest, od_min, by.x = "state", by.y = "state") 
+ggplot(covid_od, aes(x = perc_inc, y = death_perc)) +
+  geom_point() +
+  labs(title = "")
+#I'd say the above was a failed experiment
 
 ```
 
-
-```{r od-deaths-peryear}
-
-#toy data
-od_deaths_cali <- od_deaths[state_name == "CALIFORNIA"]
-od_deaths_cali <- od_deaths_cali[order(date)]
-od_deaths <- od_deaths[order(state_name, date)]
-
-# This is the way to get California yearly total OD deaths, March-March. The final vector is
-# cali_yearly_deaths. 
-date1 <- od_deaths_cali$date[3]
-date1 <- ymd(date1)
-date2 <- date1 + months(12)
-
-myfunc <- function(x,y){od_deaths_cali[od_deaths_cali$date >= x & od_deaths_cali$date < y]}
-
-x <- c(0, 12, 24, 36, 48, 60)
-y <- c(0)
-cali_yearly_deaths <- c()
-for (val in x) {
-  test <- myfunc(date1 + months(val), date2 + months(val))
-  w <- sum(test$deaths_monthly)
-  cali_yearly_deaths <- c(cali_yearly_deaths, w)
-}
-cali_yearly_deaths
-
-# Next we want to do this for every state.
-
-state_names <- unique(od_deaths$state_name)
-state_names
-
-for (val in state_names) {
-  ans <- od_deaths[state_name == val, .(state_name, deaths_monthly)]
-}
-
-
-# Ok, the above was a way to loop through every state and make a temporary data.table for it
-
-myfunc2 <- function(x,y){od_deaths[od_deaths$date >= x & od_deaths$date < y]}
-
-yy <- myfunc2(date1, date2)
-yyy <- aggregate(yy$deaths_monthly, by=list(State=yy$state_name), FUN=sum)
-
-
-```
 
 ```{r}
 # Actually that went really well! That's the first year for every state. Let's loop over the 6 years.
-
+od_deaths <- od_deaths[order(state_name, date)]
+date1 <- od_deaths$date[3]
+date1 <- ymd(date1)
+date2 <- date1 + months(12)
+myfunc2 <- function(x,y){od_deaths[od_deaths$date >= x & od_deaths$date < y]}
 z <- c(12, 24, 36, 48, 60)
-p <- myfunc2(date1, date2)
+#p <- myfunc2(date1, date2)
 yearly_deaths <- aggregate(p$deaths_monthly, by=list(State=p$state_name), FUN=sum)
 for (val in z) {
   p <- myfunc2(date1 + months(val), date2 + months(val))
@@ -223,18 +181,32 @@ for (val in z) {
   yearly_deaths <- merge(yearly_deaths, pp, by.x = "State", by.y = "State")
 }
 
-setnames(yearly_deaths, "x.x", "2015-2016")
-setnames(yearly_deaths, "x.y", "2016-2017")
-setnames(yearly_deaths, "x.x", "2017-2018")
-setnames(yearly_deaths, "x.y", "2018-2019")
-setnames(yearly_deaths, "x.x", "2019-2020")
-setnames(yearly_deaths, "x.y", "2020-2021")
+setnames(yearly_deaths, "x.x", "March 01, 2016")
+setnames(yearly_deaths, "x.y", "March 01, 2017")
+setnames(yearly_deaths, "x.x", "March 01, 2018")
+setnames(yearly_deaths, "x.y", "March 01, 2019")
+setnames(yearly_deaths, "x.x", "March 01, 2020")
+setnames(yearly_deaths, "x.y", "March 01, 2021")
 
 View(yearly_deaths)
 
-pup <- data.table::transpose(yearly_deaths)
+# Reshape yearly_deaths before plotting
 
-View(pup)
-ggplot(yearly_deaths)
+yd_long <- pivot_longer(yearly_deaths, cols = starts_with('M'))
+setnames(yd_long, "name", "date")
+setnames(yd_long, "value", "yearly_deaths")
+yd_long$date <- as.Date(yd_long$date, "%B %d, %Y")
+
+# Normalizing values per state population
+yd_long <- merge(yd_long, census, by.x = "State", by.y = "state_name")
+yd_long$population <- as.numeric(yd_long$population)
+yd_long$norm_deaths <- yd_long$yearly_deaths / yd_long$population
+
+View(yd_long)
+
+ggplot(yd_long, aes(x = date, y = norm_deaths, color = State)) +
+  geom_line(show.legend = FALSE) +
+  geom_point(show.legend = FALSE) +
+  labs(title = "Yearly drug overdose deaths per state, normalized")
 ```
 
