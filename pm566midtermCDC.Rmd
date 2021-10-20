@@ -87,12 +87,12 @@ setnames(od_deaths, "data_value", "deaths_monthly")
 
 #Data without "Total USA," good for plotting------------------------------------
 od_deaths2 <- od_deaths[state_name != "United States"]
-ggplot(od_deaths2, aes(x = date, y = data_value, color = state_name)) +
+ggplot(od_deaths2, aes(x = date, y = deaths_monthly, color = state_name)) +
   geom_line()+
   labs(title = "Deaths by overdose")
 
 # Plotting just one state without creating a new data.table first---------------
-ggplot(od_deaths[state_name == "NEBRASKA"], aes(x = date, y = data_value)) +
+ggplot(od_deaths[state_name == "NEBRASKA"], aes(x = date, y = deaths_monthly)) +
   geom_line() +
   labs(title = "Montly OD deaths in Nebraska")
 ```
@@ -199,7 +199,7 @@ state_names
 for (val in state_names) {
   ans <- od_deaths[state_name == val, .(state_name, deaths_monthly)]
 }
-View(ans)
+
 
 # Ok, the above was a way to loop through every state and make a temporary data.table for it
 
@@ -207,7 +207,7 @@ myfunc2 <- function(x,y){od_deaths[od_deaths$date >= x & od_deaths$date < y]}
 
 yy <- myfunc2(date1, date2)
 yyy <- aggregate(yy$deaths_monthly, by=list(State=yy$state_name), FUN=sum)
-View(yyy)
+
 
 ```
 
