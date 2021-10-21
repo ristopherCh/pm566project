@@ -1,15 +1,15 @@
 ---
-title: "pm566midtermCDC"
+title: "PM 566 Midterm Project"
 author: "Chris Hanson"
-date: "10/18/2021"
+date: "10/24/2021"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 ```
 
-```{r}
+```{r libraries, include = FALSE}
 library(httr)
 library(xml2)
 library(data.table)
@@ -18,7 +18,10 @@ library(tidyverse)
 library(lubridate)
 library(dtplyr)
 library(rvest)
+library(stringr)
 ```
+
+
 
 ```{r API-census-population}
 # https://www.census.gov/data/developers/guidance/api-user-guide.Example_API_Queries.html
@@ -29,7 +32,7 @@ censusquery <- GET(
 )
 
 # Checking if the website is active
-censusquery$status_code
+#censusquery$status_code
 
 # Processing data
 census_content <- content(censusquery)
@@ -53,14 +56,14 @@ census$state_name = toupper(census$state_name)
 census <- merge(census, abtable)
 ```
 
-```{r }
+```{r load-drugs}
 # Retrieving dimensions
 # https://data.cdc.gov/NCHS/VSRR-Provisional-Drug-Overdose-Death-Counts/xkb8-kh2a
 
 drugsquery <- GET(url = "https://data.cdc.gov/resource/xkb8-kh2a.json?$limit=50000")
 
 # Checking if the website is active
-drugsquery$status_code
+#drugsquery$status_code
 
 # Processing data
 drugs_content <- content(drugsquery)
@@ -71,18 +74,29 @@ drugs$state_name = toupper(drugs$state_name)
 ```
 
 ```{r cdc_drugs-processing}
-# Let's get a proper date time value!
+# Cleaning up the drugs data.table----------------------------------------------
+
 drugs$date <- as.Date(paste0(drugs$year, drugs$month, "01"), format="%Y%B%d")
+
 drugs$data_value <- as.numeric(drugs$data_value)
+
 # Combining drugs and census data
-#Merging population into drugs
 drugs <- merge(drugs, census, by.x = "state_name", by.y = "state_name")
+
+# Removing extraneous columns from 'drugs'
+drugs <- drugs[, .(state_name, state, indicator, data_value, date, population, state_number)]
+
+# Cleaning up drugs$indicator column
+drugs$indicator <- gsub("\\([^()]*\\)", "", drugs$indicator)
+drugs$indicator <- str_trim(drugs$indicator, side = c("both"))
 ```
 
 
-```{r}
-# Making a data.table of just "Number of Drug Overdose Deaths"
+```{r od_deaths}
+# Making a data.table of just "Number of Drug Overdose Deaths"------------------
+
 od_deaths <- drugs[indicator == "Number of Drug Overdose Deaths"]
+
 setnames(od_deaths, "data_value", "deaths_monthly")
 
 #Data without "Total USA," good for plotting------------------------------------
@@ -94,18 +108,44 @@ ggplot(od_deaths2, aes(x = date, y = deaths_monthly, color = state_name)) +
 # Plotting just one state without creating a new data.table first---------------
 ggplot(od_deaths[state_name == "ALABAMA"], aes(x = date, y = deaths_monthly)) +
   geom_line() +
-  labs(title = "Montly OD deaths in Nebraska")
+  labs(title = "Montly OD deaths in one state")
 ```
 
 
 ```{r increase-drugs-by-state}
 # Increase from January 2015 to March 2021 (all available data)-----------------
-# (This could be the Y axis of a number of interesting charts)
 od_min <- od_deaths[ , .SD[which.min(date)], by = state_name]
 od_max <- od_deaths[ , .SD[which.max(date)], by = state_name]
 od_dif <- od_max$deaths_monthly - od_min$deaths_monthly
 od_perc_inc <- od_dif / od_min$deaths_monthly
 od_min$perc_inc <- od_perc_inc * 100
+# This is the % increase in OD deaths from January 2015 to March 2021 per state-
+od_perc_incr <- od_min[, .(state_name, state, indicator, perc_inc)]
+
+# This is the % increase in OD deaths from January 2020 to March 2021 per state-
+od_012020 <- od_deaths[date == "2020-01-01"]
+od_dif012020 <- (od_max$deaths_monthly - od_012020$deaths_monthly) * 100 / od_012020$deaths_monthly
+od_012020$perc_inc <- od_dif012020
+od_perc_incr012020 <- od_012020[, .(state_name, state, indicator, perc_inc)]
+
+# This is how to get a range of values by date. Wow, easy.
+#od_range <- od_deaths[date > "2018-01-01" & date < "2020-01-01"]
+
+
+# Making a data.table which is all drug deaths in US
+# number of drug overdose deaths, all opioids, synthetic opioids
+drugs_usa <- drugs[, sum(data_value, na.rm = TRUE), by=list(indicator, date)]
+setnames(drugs_usa, "V1", "data_value")
+drugs_usa <- drugs_usa[order(date, indicator)]
+
+# temp, for plotting
+drugs_usa2 <- drugs_usa[indicator != c("Number of Deaths", "Number of Drug Overdose Deaths")]
+drugs_usa2 <- drugs_usa2[indicator != "Percent with drugs specified"]
+
+ggplot(drugs_usa2, aes(x = date, y = data_value, color = indicator)) +
+  geom_line()
+
+indicators
 ```
 
 ```{r covid-vs-time}
@@ -116,7 +156,7 @@ covidquery <- GET(
 )
 
 # Checking if the website is active
-covidquery$status_code
+#covidquery$status_code
 
 # Processing data
 covid_content <- content(covidquery)
@@ -173,7 +213,7 @@ date1 <- ymd(date1)
 date2 <- date1 + months(12)
 myfunc2 <- function(x,y){od_deaths[od_deaths$date >= x & od_deaths$date < y]}
 z <- c(12, 24, 36, 48, 60)
-#p <- myfunc2(date1, date2)
+p <- myfunc2(date1, date2)
 yearly_deaths <- aggregate(p$deaths_monthly, by=list(State=p$state_name), FUN=sum)
 for (val in z) {
   p <- myfunc2(date1 + months(val), date2 + months(val))
@@ -188,8 +228,6 @@ setnames(yearly_deaths, "x.y", "March 01, 2019")
 setnames(yearly_deaths, "x.x", "March 01, 2020")
 setnames(yearly_deaths, "x.y", "March 01, 2021")
 
-View(yearly_deaths)
-
 # Reshape yearly_deaths before plotting
 
 yd_long <- pivot_longer(yearly_deaths, cols = starts_with('M'))
@@ -201,8 +239,6 @@ yd_long$date <- as.Date(yd_long$date, "%B %d, %Y")
 yd_long <- merge(yd_long, census, by.x = "State", by.y = "state_name")
 yd_long$population <- as.numeric(yd_long$population)
 yd_long$norm_deaths <- yd_long$yearly_deaths / yd_long$population
-
-View(yd_long)
 
 ggplot(yd_long, aes(x = date, y = norm_deaths, color = State)) +
   geom_line(show.legend = FALSE) +
