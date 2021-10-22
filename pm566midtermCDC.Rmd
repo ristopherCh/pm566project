@@ -91,6 +91,41 @@ drugs$indicator <- gsub("\\([^()]*\\)", "", drugs$indicator)
 drugs$indicator <- str_trim(drugs$indicator, side = c("both"))
 ```
 
+```{r drugs_usa}
+# Summing up drug deaths in all states for a total US value---------------------
+drugs_usa <- drugs[, sum(data_value, na.rm = TRUE), by=list(indicator, date)]
+setnames(drugs_usa, "V1", "data_value")
+drugs_usa <- drugs_usa[order(date, indicator)]
+
+# Creating drugs_usa2 for plotting
+drugs_usa2 <- drugs_usa[indicator != c("Number of Deaths", "Number of Drug Overdose Deaths")]
+drugs_usa2 <- drugs_usa2[indicator != "Percent with drugs specified"]
+
+ggplot(drugs_usa2, aes(x = date, y = data_value, color = indicator)) +
+  geom_line()
+```
+
+```{r}
+# Making a plot that cuts out all of the missing 2016/2017 data.
+drugs_usa_2018 <- drugs_usa[date > "2017-12-01"]
+drugs_usa2_2018 <- drugs_usa_2018[indicator != c("Number of Deaths", "Number of Drug Overdose Deaths")]
+drugs_usa2_2018 <- drugs_usa2_2018[indicator != "Percent with drugs specified"]
+
+ggplot(drugs_usa2_2018, aes(x = date, y = data_value, color = indicator)) +
+  geom_line()
+
+indicators3 <- c(indicators[3],indicators[7],indicators[9])
+drugs_usa3_2018 <- drugs_usa_2018[indicator %in% indicators3]
+
+ggplot(drugs_usa3_2018, aes(x = date, y = data_value, color = indicator)) +
+  geom_line(size = 1) +
+  geom_vline(xintercept=as.numeric(drugs_usa3_2018$date[80]), linetype="dashed", size = 1) +
+  annotate(x = drugs_usa3_2018$date[80], y = 0, label = "Start of COVID-19", geom="label") +
+  labs(x = "Date", y = "Data_Value", title = "Words") +
+  scale_x_date(date_breaks = "6 month", date_minor_breaks = "1 month", date_labels = "%b-%y") +
+  theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7))
+```
+
 
 ```{r od_deaths}
 # Making a data.table of just "Number of Drug Overdose Deaths"------------------
@@ -131,22 +166,13 @@ od_perc_incr012020 <- od_012020[, .(state_name, state, indicator, perc_inc)]
 # This is how to get a range of values by date. Wow, easy.
 #od_range <- od_deaths[date > "2018-01-01" & date < "2020-01-01"]
 
-
-# Making a data.table which is all drug deaths in US
-# number of drug overdose deaths, all opioids, synthetic opioids
-drugs_usa <- drugs[, sum(data_value, na.rm = TRUE), by=list(indicator, date)]
-setnames(drugs_usa, "V1", "data_value")
-drugs_usa <- drugs_usa[order(date, indicator)]
-
-# temp, for plotting
-drugs_usa2 <- drugs_usa[indicator != c("Number of Deaths", "Number of Drug Overdose Deaths")]
-drugs_usa2 <- drugs_usa2[indicator != "Percent with drugs specified"]
-
-ggplot(drugs_usa2, aes(x = date, y = data_value, color = indicator)) +
-  geom_line()
-
-indicators
 ```
+
+
+
+# COVID DATA
+
+
 
 ```{r covid-vs-time}
 # Retrieving dimensions
