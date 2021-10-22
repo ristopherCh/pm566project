@@ -113,7 +113,7 @@ drugs_usa2_2018 <- drugs_usa2_2018[indicator != "Percent with drugs specified"]
 
 ggplot(drugs_usa2_2018, aes(x = date, y = data_value, color = indicator)) +
   geom_line()
-
+indicators = unique(drugs$indicator)
 indicators3 <- c(indicators[3],indicators[7],indicators[9])
 drugs_usa3_2018 <- drugs_usa_2018[indicator %in% indicators3]
 
