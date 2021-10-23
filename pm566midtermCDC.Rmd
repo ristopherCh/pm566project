@@ -78,32 +78,43 @@ drugs$state_name = toupper(drugs$state_name)
 
 drugs$date <- as.Date(paste0(drugs$year, drugs$month, "01"), format="%Y%B%d")
 
-drugs$data_value <- as.numeric(drugs$data_value)
+setnames(drugs, "data_value", "deaths")
+
+drugs$deaths <- as.numeric(drugs$deaths)
 
 # Combining drugs and census data
 drugs <- merge(drugs, census, by.x = "state_name", by.y = "state_name")
+drugs$population <- as.numeric(drugs$population)
 
 # Removing extraneous columns from 'drugs'
-drugs <- drugs[, .(state_name, state, indicator, data_value, date, population, state_number)]
+drugs <- drugs[, .(state_name, state, indicator, deaths, date, population, state_number)]
 
 # Cleaning up drugs$indicator column
 drugs$indicator <- gsub("\\([^()]*\\)", "", drugs$indicator)
 drugs$indicator <- str_trim(drugs$indicator, side = c("both"))
+drugs <- drugs[indicator != "Percent with drugs specified"]
+
+
+# Making a deaths per population column
+drugs$deathspop <- drugs$deaths / drugs$population
 ```
 
 ```{r drugs_usa}
 # Summing up drug deaths in all states for a total US value---------------------
-drugs_usa <- drugs[, sum(data_value, na.rm = TRUE), by=list(indicator, date)]
-setnames(drugs_usa, "V1", "data_value")
+drugs_usa <- drugs[, sum(deaths, na.rm = TRUE), by=list(indicator, date)]
+setnames(drugs_usa, "V1", "deaths")
 drugs_usa <- drugs_usa[order(date, indicator)]
 
 # Creating drugs_usa2 for plotting
-drugs_usa2 <- drugs_usa[indicator != c("Number of Deaths", "Number of Drug Overdose Deaths")]
-drugs_usa2 <- drugs_usa2[indicator != "Percent with drugs specified"]
+drugs_usa2 <- drugs_usa[indicator != c("Number of Deaths")]
 
-ggplot(drugs_usa2, aes(x = date, y = data_value, color = indicator)) +
-  geom_line()
+ggplot(drugs_usa2, aes(x = date, y = deaths, color = indicator)) +
+  geom_line() +
+  theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7)) +
+  geom_vline(xintercept=as.numeric(drugs_usa$date[685]), linetype="dashed", size = 1) +
+  annotate(x = drugs_usa$date[685], y = 0, label = "Start of COVID-19", geom="label")
 ```
+
 
 ```{r}
 # Making a plot that cuts out all of the missing 2016/2017 data.
@@ -111,17 +122,17 @@ drugs_usa_2018 <- drugs_usa[date > "2017-12-01"]
 drugs_usa2_2018 <- drugs_usa_2018[indicator != c("Number of Deaths", "Number of Drug Overdose Deaths")]
 drugs_usa2_2018 <- drugs_usa2_2018[indicator != "Percent with drugs specified"]
 
-ggplot(drugs_usa2_2018, aes(x = date, y = data_value, color = indicator)) +
+ggplot(drugs_usa2_2018, aes(x = date, y = deaths, color = indicator)) +
   geom_line()
 indicators = unique(drugs$indicator)
-indicators3 <- c(indicators[3],indicators[7],indicators[9])
+indicators3 <- c(indicators[2],indicators[6],indicators[8])
 drugs_usa3_2018 <- drugs_usa_2018[indicator %in% indicators3]
 
-ggplot(drugs_usa3_2018, aes(x = date, y = data_value, color = indicator)) +
+ggplot(drugs_usa3_2018, aes(x = date, y = deaths, color = indicator)) +
   geom_line(size = 1) +
   geom_vline(xintercept=as.numeric(drugs_usa3_2018$date[80]), linetype="dashed", size = 1) +
   annotate(x = drugs_usa3_2018$date[80], y = 0, label = "Start of COVID-19", geom="label") +
-  labs(x = "Date", y = "Data_Value", title = "Words") +
+  labs(x = "Date", y = "Deaths", title = "Words") +
   scale_x_date(date_breaks = "6 month", date_minor_breaks = "1 month", date_labels = "%b-%y") +
   theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7))
 ```
@@ -132,18 +143,23 @@ ggplot(drugs_usa3_2018, aes(x = date, y = data_value, color = indicator)) +
 
 od_deaths <- drugs[indicator == "Number of Drug Overdose Deaths"]
 
-setnames(od_deaths, "data_value", "deaths_monthly")
-
-#Data without "Total USA," good for plotting------------------------------------
-od_deaths2 <- od_deaths[state_name != "United States"]
-ggplot(od_deaths2, aes(x = date, y = deaths_monthly, color = state_name)) +
-  geom_line()+
+# Plot of all drug overdoses for every state, total number
+ggplot(od_deaths, aes(x = date, y = deaths, color = state_name)) +
+  geom_line() +
   labs(title = "Deaths by overdose")
 
 # Plotting just one state without creating a new data.table first---------------
-ggplot(od_deaths[state_name == "ALABAMA"], aes(x = date, y = deaths_monthly)) +
+ggplot(od_deaths[state_name == "ALABAMA"], aes(x = date, y = deaths)) +
   geom_line() +
   labs(title = "Montly OD deaths in one state")
+
+# Plotting od deaths scaled by population
+ggplot(od_deaths, aes(x = date, y = deathspop, color = state_name)) +
+  geom_line()
+
+# Out of curiosity, getting a sum of deathspop per state]
+od_deaths_sum <- od_deaths[, sum(deathspop, na.rm = TRUE), by = state]
+od_deaths_sum <- od_deaths_sum[order(-V1)]
 ```
 
 
@@ -151,17 +167,18 @@ ggplot(od_deaths[state_name == "ALABAMA"], aes(x = date, y = deaths_monthly)) +
 # Increase from January 2015 to March 2021 (all available data)-----------------
 od_min <- od_deaths[ , .SD[which.min(date)], by = state_name]
 od_max <- od_deaths[ , .SD[which.max(date)], by = state_name]
-od_dif <- od_max$deaths_monthly - od_min$deaths_monthly
-od_perc_inc <- od_dif / od_min$deaths_monthly
+od_dif <- od_max$deaths - od_min$deaths
+od_perc_inc <- od_dif / od_min$deaths
 od_min$perc_inc <- od_perc_inc * 100
+
 # This is the % increase in OD deaths from January 2015 to March 2021 per state-
 od_perc_incr <- od_min[, .(state_name, state, indicator, perc_inc)]
 
-# This is the % increase in OD deaths from January 2020 to March 2021 per state-
-od_012020 <- od_deaths[date == "2020-01-01"]
-od_dif012020 <- (od_max$deaths_monthly - od_012020$deaths_monthly) * 100 / od_012020$deaths_monthly
-od_012020$perc_inc <- od_dif012020
-od_perc_incr012020 <- od_012020[, .(state_name, state, indicator, perc_inc)]
+# This is the % increase in OD deaths from March 2020 to March 2021 per state-
+od_0320 <- od_deaths[date == "2020-03-01"]
+od_dif0320 <- (od_max$deaths - od_0320$deaths) * 100 / od_0320$deaths
+od_0320$perc_inc <- od_dif0320
+od_perc_incr0320 <- od_0320[, .(state_name, state, indicator, perc_inc)]
 
 # This is how to get a range of values by date. Wow, easy.
 #od_range <- od_deaths[date > "2018-01-01" & date < "2020-01-01"]
@@ -190,17 +207,10 @@ covid_content <- content(covidquery)
 covid <- rbindlist(covid_content[1:length(covid_content)], fill=TRUE)
 covid$date <- as.Date(covid$submission_date)
 covid$tot_death <- as.numeric(covid$tot_death)
-```
+covid$tot_cases <- as.numeric(covid$tot_cases)
 
-```{r}
-# let's just see covid in cali over time, for kicks
-# tot_death is total death
-covid_ca <- covid[state == "CA"]
-
-ggplot(covid_ca, aes(x = date, y = tot_death)) +
-  geom_line() +
-  labs(title = "Total covid deaths in California")
-
+# Removing extraneous columns from 'covid'
+covid <- covid[, .(state, tot_cases, new_case, tot_death, new_death, date)]
 ```
 
 ```{r}
@@ -208,25 +218,40 @@ ggplot(covid_ca, aes(x = date, y = tot_death)) +
 covid <- merge(covid, census, by.x = "state", by.y = "state_abbreviation")
 covid$population <- as.numeric(covid$population)
 
-#Fantastic! Now finally, let's do total death / total population
+# Creating death_perc, total death / total population
 covid$death_perc <- covid$tot_death / covid$population
+covid$case_perc <- covid$tot_cases / covid$population
+```
+
+```{r covid_cali}
+# let's just see covid in cali over time, for kicks
+#covid_ca <- covid[state == "CA"]
+
+#ggplot(covid_ca, aes(x = date, y = tot_death)) +
+#  geom_line() +
+#  labs(title = "Total covid deaths in California")
+
 ```
 
 ```{r}
-#Let's plot covid deaths by population percent----------------------------------
-ggplot(covid, aes(x = date, y = death_perc, color = state_name)) +
+# Ploting covid deaths by population percent----------------------------------
+ggplot(covid, aes(x = date, y = case_perc, color = state_name)) +
   geom_line(show.legend = FALSE) 
 
-# Quick and dirty plot of covid vs drug deaths----------------------------------
+# Playing with plots of covid vs drug deaths----------------------------------
 
 covid_latest <- covid[ , .SD[which.max(date)], by = state_name]
-#Here it is, covid_latest$death_perc
+covid_0321 <- covid[date == "2021-03-01"]
 
-covid_od <- merge(covid_latest, od_min, by.x = "state", by.y = "state") 
-ggplot(covid_od, aes(x = perc_inc, y = death_perc)) +
+covid_od <- merge(covid_latest, od_perc_incr, by.x = "state", by.y = "state")
+covid_od0320 <- merge(covid_0321, od_perc_incr0320, by.x = "state", by.y = "state")
+
+ggplot(covid_od0320, aes(y = perc_inc, x = case_perc)) +
   geom_point() +
+  geom_smooth() +
   labs(title = "")
-#I'd say the above was a failed experiment
+
+
 
 ```
 
@@ -240,10 +265,10 @@ date2 <- date1 + months(12)
 myfunc2 <- function(x,y){od_deaths[od_deaths$date >= x & od_deaths$date < y]}
 z <- c(12, 24, 36, 48, 60)
 p <- myfunc2(date1, date2)
-yearly_deaths <- aggregate(p$deaths_monthly, by=list(State=p$state_name), FUN=sum)
+yearly_deaths <- aggregate(p$deaths, by=list(State=p$state_name), FUN=sum)
 for (val in z) {
   p <- myfunc2(date1 + months(val), date2 + months(val))
-  pp <- aggregate(p$deaths_monthly, by=list(State=p$state_name), FUN=sum)
+  pp <- aggregate(p$deaths, by=list(State=p$state_name), FUN=sum)
   yearly_deaths <- merge(yearly_deaths, pp, by.x = "State", by.y = "State")
 }
 
