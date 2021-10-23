@@ -120,7 +120,7 @@ ggplot(drugs_usa2, aes(x = date, y = deaths, color = indicator)) +
 # Making a plot that cuts out all of the missing 2016/2017 data.
 drugs_usa_2018 <- drugs_usa[date > "2017-12-01"]
 drugs_usa2_2018 <- drugs_usa_2018[indicator != c("Number of Deaths", "Number of Drug Overdose Deaths")]
-drugs_usa2_2018 <- drugs_usa2_2018[indicator != "Percent with drugs specified"]
+#drugs_usa2_2018 <- drugs_usa2_2018[indicator != "Percent with drugs specified"]
 
 ggplot(drugs_usa2_2018, aes(x = date, y = deaths, color = indicator)) +
   geom_line()
