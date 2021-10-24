@@ -9,6 +9,17 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 ```
 
+# How has COVID-19 affected the US substance abuse crisis?
+
+## Introduction:
+
+Drug overdose deaths in the United States have been rising steadily since the turn of the century, but a significant increase in this trend has been observed since the mid-2010's. Public discourse around this tragedy led to cultural and political changes which appeared to have slowed the trend around 2018. Then, in March 2020, the COVID-19 pandemic led to an upheaval in nearly every aspect of daily life, resulting in drastic changes to the way we work, socialize, and interact with society at large. 
+
+Such a fundamental change in the way we live our lives was a universally destabilizing experience. To slow the spread of the virus, most public places of congregation were shut down, leading to widespread loss of jobs and a crash of the economy. Those with job security soon found new ways to work through the pandemic, and those without it found themselves without a job and an income.
+
+The category of person most likely to be debilitated by the COVID-19 pandemic correlates with the type of person most vulnerable to experiencing drug addiction. Substance abuse is associated with unemployment or underemployment, lack of work opportunities, social isolation, mental health issues, and homelessness. As COVID-19 has undeniably contributed to each of these factors, an investigation into the pandemic’s effect on the substance abuse crisis is warranted.
+
+
 ```{r libraries, include = FALSE}
 library(httr)
 library(xml2)
@@ -54,7 +65,141 @@ setnames(abtable, "State Abbreviation", "state_abbreviation")
 #Combining census and abtable data.tables
 census$state_name = toupper(census$state_name)
 census <- merge(census, abtable)
+#census$population <- as.numeric(census$population)
 ```
+
+## Preliminary Results: 
+
+COVID-19 was first detected in the USA on January 17, 2020, in Washington state. By March 13, 2020, President Trump had declared a nationwide emergency, and 2 days later, schools and restaurants began to shut down. By May 9th, 2020, the unemployment rate hit 14.7%, the worst rate since the Great Depression. By September 2020, the US COVID-19 death toll surpassed 200,000, and by January 18, 2021, it had doubled to 400,000. On December 14th, 2020, the initial phase of the vaccination program began, and by March 13, 2021, the US had surpassed 100 million vaccinations administered. By July 1st, 20201, the delta variant had become detected in all 50 US states.
+
+This timeline helps provide a framework for interpreting the following simple plots:
+
+
+```{r COVID}
+# COVID DATA--------------------------------------------------------------------
+```
+
+```{r covid-vs-time}
+# Retrieving dimensions
+
+covidquery <- GET(
+  url = "https://data.cdc.gov/resource/9mfq-cb36.json?$limit=50000"
+)
+
+# Checking if the website is active
+#covidquery$status_code
+
+# Processing data
+covid_content <- content(covidquery)
+
+covid <- rbindlist(covid_content[1:length(covid_content)], fill=TRUE)
+covid$date <- as.Date(covid$submission_date)
+covid$tot_death <- as.numeric(covid$tot_death)
+covid$tot_cases <- as.numeric(covid$tot_cases)
+covid$new_case <- as.numeric(covid$new_case)
+covid$new_death <- as.numeric(covid$new_death)
+
+# Removing extraneous columns from 'covid'
+covid <- covid[, .(state, tot_cases, new_case, tot_death, new_death, date)]
+covid <- covid[order(state, date)]
+```
+
+```{r}
+#Combining census and covid data.tables
+covid <- merge(covid, census, by.x = "state", by.y = "state_abbreviation")
+covid$population <- as.numeric(covid$population)
+
+# Creating death_perc, total death / total population
+covid$death_perc <- covid$tot_death / covid$population
+covid$case_perc <- covid$tot_cases / covid$population
+covid$newdeath_perc <- covid$new_death / covid$population
+covid$newcase_perc <- covid$new_case / covid$population
+```
+
+```{r covid_cali}
+# let's just see covid in cali over time, for kicks
+#covid_ca <- covid[state == "CA"]
+
+#ggplot(covid_ca, aes(x = date, y = tot_death)) +
+#  geom_line() +
+#  labs(title = "Total covid deaths in California")
+
+```
+
+```{r}
+# Summing up COVID data from all states, for total US values--------------------
+covid_usa <- aggregate(cbind(tot_cases, new_case, tot_death, new_death, population) ~ date, data = covid, FUN = sum, na.rm = TRUE)
+covid_usa$death_perc <- covid_usa$tot_death * 100 / covid_usa$population
+covid_usa$death_cases <- covid_usa$new_death / covid_usa$new_case
+
+ggplot(covid_usa, aes(x = date, y = new_case)) +
+  geom_line() +
+  labs(title = "New US COVID-19 cases") +
+  geom_vline(xintercept=as.numeric(covid_usa$date[52]), linetype="dashed", size = 1) +
+  annotate(geom = "text", x = covid_usa$date[60], y = 150000, label = "Emergency Declaration", angle = 90, color = "blue") +
+  geom_vline(xintercept=as.numeric(covid_usa$date[109]), linetype="dashed", size = 1) +
+  annotate(geom = "text", x = covid_usa$date[117], y = 150000, label = "14.7% unemployment", angle = 90, color = "blue") +
+  geom_vline(xintercept=as.numeric(covid_usa$date[416]), linetype="dashed", size = 1) +
+  annotate(geom = "text", x = covid_usa$date[424], y = 150000, label = "100 million vaccinations", angle = 90, color = "blue")+
+  geom_vline(xintercept=as.numeric(covid_usa$date[329]), linetype="dashed", size = 1) +
+  annotate(geom = "text", x = covid_usa$date[337], y = 60000, label = "Vaccination begins", angle = 90, color = "blue") +
+  geom_vline(xintercept=as.numeric(covid_usa$date[527]), linetype="dashed", size = 1) +
+  annotate(geom = "text", x = covid_usa$date[535], y = 150000, label = "Delta variant spreads", angle = 90, color = "blue") +
+  xlab("Date") + ylab("New COVID-19 cases")
+
+ggplot(covid_usa, aes(x = date, y = tot_cases)) +
+  geom_line() +
+  labs(title = "Total US COVID-19 cases")  +
+  xlab("Date") + ylab("COVID-19 cases")
+
+ggplot(covid_usa, aes(x = date, y = tot_death)) +
+  geom_line() +
+  labs(title = "Total US COVID-19 deaths") +
+  xlab("Date") + ylab("COVID-19 deaths")
+
+ggplot(covid_usa, aes(x = date, y = new_death)) +
+  geom_line() +
+  labs(title = "New US COVID-19 deaths") +
+  xlab("Date") + ylab("Daily COVID-19 deaths")
+
+ggplot(covid_usa, aes(x = date, y = death_perc)) +
+  geom_line() +
+  labs(title = "Total US COVID-19 deaths by % of US population") +
+  xlab("Date") + ylab("Percent of US population")
+
+ggplot(covid_usa, aes(x = date, y = death_cases)) +
+  geom_line() +
+  labs(title = "Ratio of new deaths to new cases in all US")
+
+
+```
+
+
+```{r}
+# Ploting covid deaths by population percent----------------------------------
+ggplot(covid, aes(x = date, y = case_perc, color = state_name)) +
+  geom_line() +
+  labs(title = "COVID-19 cases by % of state population") +
+  xlab("Date") + ylab("COVID-19 cases") +
+  theme(legend.title = element_text(size = 5), legend.text = element_text(size = 5))
+
+#ggplot(covid, aes(x = date, y = newcase_perc, color = state_name)) +
+#  geom_line(show.legend = FALSE) +
+#  labs(title = "New COVID-19 cases by % of state population") +
+#  xlab("Date") + ylab("Daily COVID-19 cases")
+
+ggplot(covid, aes(x = date, y = death_perc, color = state_name)) +
+  geom_line(show.legend = FALSE) +
+  labs(title = "COVID-19 deaths by % of state population")+
+  xlab("Date") + ylab("COVID-19 deaths")
+
+#ggplot(covid, aes(x = date, y = newdeath_perc, color = state_name)) +
+#  geom_line(show.legend = FALSE) +
+#  labs(title = "New COVID-19 deaths by % of state population")+
+#  xlab("Date") + ylab("Daily COVID-19 deaths") 
+```
+
+Drugs Data
 
 ```{r load-drugs}
 # Retrieving dimensions
@@ -107,12 +252,20 @@ drugs_usa <- drugs_usa[order(date, indicator)]
 
 # Creating drugs_usa2 for plotting
 drugs_usa2 <- drugs_usa[indicator != c("Number of Deaths")]
+drugs_usa2 <- drugs_usa2[indicator != c("Number of Drug Overdose Deaths")]
+drugs_usa2 <- drugs_usa2[indicator != c("Natural & semi-synthetic opioids, incl. methadone")]
+drugs_usa2 <- drugs_usa2[indicator != c("Natural & semi-synthetic opioids")]
+drugs_usa2 <- drugs_usa2[indicator != c("Natural, semi-synthetic, & synthetic opioids, incl. methadone")]
+drugs_usa2 <- drugs_usa2[indicator != c("Cocaine")]
+drugs_usa2 <- drugs_usa2[indicator != c("Heroin")]
+drugs_usa2 <- drugs_usa2[indicator != c("Methadone")]
+
 
 ggplot(drugs_usa2, aes(x = date, y = deaths, color = indicator)) +
   geom_line() +
   theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7)) +
   geom_vline(xintercept=as.numeric(drugs_usa$date[685]), linetype="dashed", size = 1) +
-  annotate(x = drugs_usa$date[685], y = 0, label = "Start of COVID-19", geom="label")
+  annotate(geom = "text", x = drugs_usa$date[650], y = 15000, label = "Start of COVID-19", angle = 90)
 ```
 
 
@@ -142,6 +295,7 @@ ggplot(drugs_usa3_2018, aes(x = date, y = deaths, color = indicator)) +
 # Making a data.table of just "Number of Drug Overdose Deaths"------------------
 
 od_deaths <- drugs[indicator == "Number of Drug Overdose Deaths"]
+od_deaths <- od_deaths[order(state_name, date)]
 
 # Plot of all drug overdoses for every state, total number
 ggplot(od_deaths, aes(x = date, y = deaths, color = state_name)) +
@@ -185,61 +339,10 @@ od_perc_incr0320 <- od_0320[, .(state_name, state, indicator, perc_inc)]
 
 ```
 
-
-
-# COVID DATA
-
-
-
-```{r covid-vs-time}
-# Retrieving dimensions
-
-covidquery <- GET(
-  url = "https://data.cdc.gov/resource/9mfq-cb36.json?$limit=50000"
-)
-
-# Checking if the website is active
-#covidquery$status_code
-
-# Processing data
-covid_content <- content(covidquery)
-
-covid <- rbindlist(covid_content[1:length(covid_content)], fill=TRUE)
-covid$date <- as.Date(covid$submission_date)
-covid$tot_death <- as.numeric(covid$tot_death)
-covid$tot_cases <- as.numeric(covid$tot_cases)
-
-# Removing extraneous columns from 'covid'
-covid <- covid[, .(state, tot_cases, new_case, tot_death, new_death, date)]
-```
+---------------------
 
 ```{r}
-#Combining census and covid data.tables
-covid <- merge(covid, census, by.x = "state", by.y = "state_abbreviation")
-covid$population <- as.numeric(covid$population)
-
-# Creating death_perc, total death / total population
-covid$death_perc <- covid$tot_death / covid$population
-covid$case_perc <- covid$tot_cases / covid$population
-```
-
-```{r covid_cali}
-# let's just see covid in cali over time, for kicks
-#covid_ca <- covid[state == "CA"]
-
-#ggplot(covid_ca, aes(x = date, y = tot_death)) +
-#  geom_line() +
-#  labs(title = "Total covid deaths in California")
-
-```
-
-```{r}
-# Ploting covid deaths by population percent----------------------------------
-ggplot(covid, aes(x = date, y = case_perc, color = state_name)) +
-  geom_line(show.legend = FALSE) 
-
 # Playing with plots of covid vs drug deaths----------------------------------
-
 covid_latest <- covid[ , .SD[which.max(date)], by = state_name]
 covid_0321 <- covid[date == "2021-03-01"]
 
@@ -250,28 +353,32 @@ ggplot(covid_od0320, aes(y = perc_inc, x = case_perc)) +
   geom_point() +
   geom_smooth() +
   labs(title = "")
-
-
-
 ```
 
 
 ```{r}
-# Actually that went really well! That's the first year for every state. Let's loop over the 6 years.
-od_deaths <- od_deaths[order(state_name, date)]
+# 2015-03-01
 date1 <- od_deaths$date[3]
 date1 <- ymd(date1)
+# 2016-03-01
 date2 <- date1 + months(12)
+
+# Creates a DT of data between two dates given
 myfunc2 <- function(x,y){od_deaths[od_deaths$date >= x & od_deaths$date < y]}
-z <- c(12, 24, 36, 48, 60)
 p <- myfunc2(date1, date2)
+
+# Sum up deaths between the two dates (March 2015-2016 here) by state. 
 yearly_deaths <- aggregate(p$deaths, by=list(State=p$state_name), FUN=sum)
+
+# Now again, for the next 5 years. One by one, merge these vectors together.
+z <- c(12, 24, 36, 48, 60)
 for (val in z) {
   p <- myfunc2(date1 + months(val), date2 + months(val))
   pp <- aggregate(p$deaths, by=list(State=p$state_name), FUN=sum)
   yearly_deaths <- merge(yearly_deaths, pp, by.x = "State", by.y = "State")
 }
 
+#Column titles came out weird, fixing them:
 setnames(yearly_deaths, "x.x", "March 01, 2016")
 setnames(yearly_deaths, "x.y", "March 01, 2017")
 setnames(yearly_deaths, "x.x", "March 01, 2018")
