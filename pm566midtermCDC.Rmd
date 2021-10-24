@@ -152,15 +152,15 @@ ggplot(covid_usa, aes(x = date, y = tot_cases)) +
   labs(title = "Total US COVID-19 cases")  +
   xlab("Date") + ylab("COVID-19 cases")
 
-ggplot(covid_usa, aes(x = date, y = tot_death)) +
-  geom_line() +
-  labs(title = "Total US COVID-19 deaths") +
-  xlab("Date") + ylab("COVID-19 deaths")
-
 ggplot(covid_usa, aes(x = date, y = new_death)) +
   geom_line() +
   labs(title = "New US COVID-19 deaths") +
   xlab("Date") + ylab("Daily COVID-19 deaths")
+
+ggplot(covid_usa, aes(x = date, y = tot_death)) +
+  geom_line() +
+  labs(title = "Total US COVID-19 deaths") +
+  xlab("Date") + ylab("COVID-19 deaths")
 
 ggplot(covid_usa, aes(x = date, y = death_perc)) +
   geom_line() +
@@ -199,7 +199,7 @@ ggplot(covid, aes(x = date, y = death_perc, color = state_name)) +
 #  xlab("Date") + ylab("Daily COVID-19 deaths") 
 ```
 
-Drugs Data
+Having this information in hand will help provide perspective as a preliminary investigation into US drug useage patterns is explored.
 
 ```{r load-drugs}
 # Retrieving dimensions
@@ -241,8 +241,10 @@ drugs <- drugs[indicator != "Percent with drugs specified"]
 
 
 # Making a deaths per population column
-drugs$deathspop <- drugs$deaths / drugs$population
+drugs$deathspop <- drugs$deaths *100 / drugs$population
 ```
+
+The CDC provides a vast and thorough dataset giving monthly summaries of overdose deaths, by state, categorized by drug type (heroin, cocaine, opioids, etc.) as well as drug type subcategories (synthetic opioids, natural & semi-synthetic opioids, etc). 
 
 ```{r drugs_usa}
 # Summing up drug deaths in all states for a total US value---------------------
@@ -250,8 +252,22 @@ drugs_usa <- drugs[, sum(deaths, na.rm = TRUE), by=list(indicator, date)]
 setnames(drugs_usa, "V1", "deaths")
 drugs_usa <- drugs_usa[order(date, indicator)]
 
-# Creating drugs_usa2 for plotting
 drugs_usa2 <- drugs_usa[indicator != c("Number of Deaths")]
+
+ggplot(drugs_usa2, aes(x = date, y = deaths, color = indicator)) +
+  geom_line() +
+  theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7))
+
+# Creating drugs_usa2 for plotting
+
+
+```
+
+(First, it must be mentioned that all data regarding specific drug types is unavailable for the years of 2016 and 2017. I'm hoping to rectify this soon.)
+
+This is a graph of overdoses in the US, broken down by drug type and subtype. Some of these are independent of all others: Psychostimulants (including methamphedamine) and cocaine have their own categories. Others share data: there is one category for all opioids, another for natural opioids, and another for synthetic opioids. As some categories are relatively low in number and unchanging over time, these categories can be narrowed down for clarity:
+
+```{r}
 drugs_usa2 <- drugs_usa2[indicator != c("Number of Drug Overdose Deaths")]
 drugs_usa2 <- drugs_usa2[indicator != c("Natural & semi-synthetic opioids, incl. methadone")]
 drugs_usa2 <- drugs_usa2[indicator != c("Natural & semi-synthetic opioids")]
@@ -259,8 +275,7 @@ drugs_usa2 <- drugs_usa2[indicator != c("Natural, semi-synthetic, & synthetic op
 drugs_usa2 <- drugs_usa2[indicator != c("Cocaine")]
 drugs_usa2 <- drugs_usa2[indicator != c("Heroin")]
 drugs_usa2 <- drugs_usa2[indicator != c("Methadone")]
-
-
+# 
 ggplot(drugs_usa2, aes(x = date, y = deaths, color = indicator)) +
   geom_line() +
   theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7)) +
@@ -268,6 +283,9 @@ ggplot(drugs_usa2, aes(x = date, y = deaths, color = indicator)) +
   annotate(geom = "text", x = drugs_usa$date[650], y = 15000, label = "Start of COVID-19", angle = 90)
 ```
 
+This graph immediately suggests some insights. For one, there does appear to be a clear acceleration in the rate of drug overdose deaths following the onset of the COVID-19 pandemic. Another is regarding the types of drugs involved: While opioids are by far the most implicated drug, it is the synthetic, not the natural, opioids that are the primary driver. Natural opioids are those such as morphine and codeine, which are popularly recognized. A common semi-synthetic opioid is heroin. 
+
+However, the synthetic opioid behind this great increase is fentanyl, which is often illicitly manufactured and commonly used to lace other drugs. There has been considerable coverage of the rise of fentanyl and the damage it is causing the US.
 
 ```{r}
 # Making a plot that cuts out all of the missing 2016/2017 data.
@@ -284,12 +302,16 @@ drugs_usa3_2018 <- drugs_usa_2018[indicator %in% indicators3]
 ggplot(drugs_usa3_2018, aes(x = date, y = deaths, color = indicator)) +
   geom_line(size = 1) +
   geom_vline(xintercept=as.numeric(drugs_usa3_2018$date[80]), linetype="dashed", size = 1) +
-  annotate(x = drugs_usa3_2018$date[80], y = 0, label = "Start of COVID-19", geom="label") +
+  annotate(x = drugs_usa3_2018$date[82], y = 59000, label = "Start of COVID-19", geom="text", angle = 90) +
   labs(x = "Date", y = "Deaths", title = "Words") +
   scale_x_date(date_breaks = "6 month", date_minor_breaks = "1 month", date_labels = "%b-%y") +
   theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7))
+
+maxod <- drugs_usa[date == "2021-03-01" & indicator == "Number of Drug Overdose Deaths"]
+maxsynth <- drugs_usa[date == "2021-03-01" & indicator == "Synthetic opioids, excl. methadone"]
 ```
 
+On March 01, 2021 - the most recent data provided in this dataset - synthetic opioids were responsible for `r maxsynth[[3]] * 100 / maxod[[3]]`% of all drug overdose deaths in the US.
 
 ```{r od_deaths}
 # Making a data.table of just "Number of Drug Overdose Deaths"------------------
@@ -300,7 +322,8 @@ od_deaths <- od_deaths[order(state_name, date)]
 # Plot of all drug overdoses for every state, total number
 ggplot(od_deaths, aes(x = date, y = deaths, color = state_name)) +
   geom_line() +
-  labs(title = "Deaths by overdose")
+  labs(title = "Monthly deaths by overdose") +
+  theme(legend.title = element_text(size = 5), legend.text = element_text(size = 5))
 
 # Plotting just one state without creating a new data.table first---------------
 ggplot(od_deaths[state_name == "ALABAMA"], aes(x = date, y = deaths)) +
@@ -309,7 +332,8 @@ ggplot(od_deaths[state_name == "ALABAMA"], aes(x = date, y = deaths)) +
 
 # Plotting od deaths scaled by population
 ggplot(od_deaths, aes(x = date, y = deathspop, color = state_name)) +
-  geom_line()
+  geom_line(show.legend = FALSE) +
+  labs(title = "Monthly deaths by overdose, by % of state pop")
 
 # Out of curiosity, getting a sum of deathspop per state]
 od_deaths_sum <- od_deaths[, sum(deathspop, na.rm = TRUE), by = state]
