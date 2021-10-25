@@ -3,10 +3,7 @@ title: "PM 566 Midterm Project"
 author: "Chris Hanson"
 date: "10/24/2021"
 output: 
-  github_document:
-    html_preview: False
   html_document: default
-always_allow_html: TRUE
 ---
 
 ```{r setup, include=FALSE}
