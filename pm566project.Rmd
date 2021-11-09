@@ -3,9 +3,9 @@ title: "PM 566 Midterm Project"
 author: "Chris Hanson"
 date: "10/24/2021"
 output: 
+  html_document: default
   github_document:
     html_preview: False
-  html_document: default
 always_allow_html: TRUE
 ---
 
@@ -37,7 +37,6 @@ library(ggsci)
 ```
 
 ```{r}
-
 abbrev2 <- read_html(x = "https://simple.wikipedia.org/wiki/List_of_U.S._states_by_traditional_abbreviation")
 abtable2 <- xml_find_all(abbrev2, xpath = "/html/body/div[3]/div[3]/div[5]/div[1]/table[1]/tbody")
 abtable2 <- html_table(abtable2)
@@ -50,7 +49,6 @@ abtable2$state_abbreviation = toupper(abtable2$state_abbreviation)
 abtable2$state_abbreviation <- str_replace_all(abtable2$state_abbreviation, "[[:punct:]]", "")
 abtable2[11,1] <- "GEORGIA"
 ```
-
 
 ```{r API-census-population}
 # https://www.census.gov/data/developers/guidance/api-user-guide.Example_API_Queries.html
@@ -98,7 +96,6 @@ COVID-19 was first detected in the USA on January 17, 2020, in Washington State.
 
 ```{r covid-vs-time}
 # Retrieving dimensions
-
 covidquery <- GET(
   url = "https://data.cdc.gov/resource/9mfq-cb36.json?$limit=50000"
 )
@@ -329,7 +326,6 @@ ggplot(drugs_usa3_2018, aes(x = date, y = deaths, color = indicator)) +
   theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7)) +
   ylim(0, 100000) +
   scale_color_brewer(palette = "Dark2")
-
 ```
 
 The synthetic opioid behind this great increase is fentanyl, which is often illicitly manufactured and commonly used to lace other drugs. There has been considerable media coverage of the rise of fentanyl and the damage it is causing the US, and many government agencies have declared an "opioid epidemic."
@@ -395,7 +391,6 @@ OR
 
 Similarly, whether COVID-19 deaths per capita is correlated with all overdose deaths in the same timeframe, per capita:
 
-
 ```{r increase-drugs-by-state}
 # Increase from January 2015 to March 2021 (all available data)-----------------
 od_min <- od_deaths[ , .SD[which.min(date)], by = state_name]
@@ -412,10 +407,6 @@ od_0320 <- od_deaths[date == "2020-03-01"]
 od_dif0320 <- (od_max$deaths - od_0320$deaths) * 100 / od_0320$deaths
 od_0320$perc_inc <- od_dif0320
 od_perc_incr0320 <- od_0320[, .(state_name, state, indicator, perc_inc)]
-
-# This is how to get a range of values by date. Wow, easy.
-#od_range <- od_deaths[date > "2018-01-01" & date < "2020-01-01"]
-
 ```
 
 ```{r}
@@ -424,10 +415,10 @@ od_deaths_2021B <- aggregate(od_deaths_2021B$deaths, by=list(State=od_deaths_202
 od_deaths_2021B <- merge(od_deaths_2021B, census, by.x = "State", by.y="state_name")
 od_deaths_2021B$x <- as.numeric(od_deaths_2021B$x)
 od_deaths_2021B$population <- as.numeric(od_deaths_2021B$population)
+
 # This is the percentage of the total state population that died of OD's from 03-2020 to 03-2021
 od_deaths_2021B$deathspop <- od_deaths_2021B$x * 100/ od_deaths_2021B$population
 ```
-
 
 ```{r}
 # Plot of covid vs relative drug deaths----------------------------------
@@ -481,7 +472,6 @@ https://www.hhs.gov/opioids/about-the-epidemic/index.html
 https://www.cdc.gov/museum/timeline/covid19.html
 
 https://data.cdc.gov/NCHS/VSRR-Provisional-Drug-Overdose-Death-Counts/xkb8-kh2a
-
 
 
 
