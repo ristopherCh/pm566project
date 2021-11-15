@@ -239,9 +239,7 @@ drugs$state_name = toupper(drugs$state_name)
 # Cleaning up the drugs data.table----------------------------------------------
 
 drugs$date <- as.Date(paste0(drugs$year, drugs$month, "01"), format="%Y%B%d")
-
 setnames(drugs, "data_value", "deaths")
-
 drugs$deaths <- as.numeric(drugs$deaths)
 
 # Combining drugs and census data
@@ -249,17 +247,50 @@ drugs <- merge(drugs, census, by.x = "state_name", by.y = "state_name")
 drugs$population <- as.numeric(drugs$population)
 
 # Removing extraneous columns from 'drugs'
-drugs <- drugs[, .(state_name, state, indicator, deaths, date, population, state_number)]
+drugs <- drugs[, .(state_name, state, indicator, deaths, date, year, population, state_number)]
 
 # Cleaning up drugs$indicator column
 drugs$indicator <- gsub("\\([^()]*\\)", "", drugs$indicator)
 drugs$indicator <- str_trim(drugs$indicator, side = c("both"))
 drugs <- drugs[indicator != "Percent with drugs specified"]
 
-
 # Making a deaths per population column
 drugs$deathspop <- drugs$deaths *100 / drugs$population
+
+nrow(drugs) #36,000
+
+# Dropping rows where deaths == NA
+drugs <- drugs %>% drop_na(deaths)
+
+nrow(drugs) #22,943
+
+drugs <- drugs[order(state_number, date)]
+
+# Note to self: Many states (ie AL) never have any data other than # of drug overdose deaths. No states have anything but this value for years 2016 and 2017. 
 ```
+
+```{r reliability}
+
+# Figuring out what data is and isn't reliable
+AL <- filter(drugs, state == "AL")
+
+states <- unique(drugs$state)
+
+indic_2 <- vector()
+for (val in states) {
+  x <- filter(drugs, state == val)
+  y <- length(unique(x$indicator))
+  if (y != length(unique(drugs$indicator))) {
+    indic_2 <- append(indic_2, val)
+  }
+}
+
+# States without any specific drug information in any year
+cat("States without any specific drug information:", indic_2)
+
+
+```
+
 
 ## The drug mortality crisis in the US
 
@@ -275,11 +306,11 @@ drugs_usa <- drugs_usa[order(date, indicator)]
 
 drugs_usa2 <- drugs_usa[indicator != c("Number of Deaths")]
 
-ggplot(drugs_usa2, aes(x = date, y = deaths, color = indicator)) +
-  geom_line() +
-  theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7)) +
-  labs(title = "OD deaths from all drug categories, 2015-2021", x = "Date", y = "12 month rolling average deaths from OD", subtitle = "Source: data.cdc.gov API") +
-  scale_x_date(date_breaks = "year",  date_labels = "%Y")
+# ggplot(drugs_usa2, aes(x = date, y = deaths, color = indicator)) +
+#   geom_line() +
+#   theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7)) +
+#   labs(title = "OD deaths from all drug categories, 2015-2021", x = "Date", y = "12 month rolling average deaths from OD", subtitle = "Source: data.cdc.gov API") +
+#   scale_x_date(date_breaks = "year",  date_labels = "%Y")
 ```
 
 Zooming in on the most telling parts of this graph:
@@ -387,10 +418,10 @@ OR
 
 Similarly, whether COVID-19 deaths per capita is correlated with all overdose deaths in the same timeframe, per capita:
 
-```{r relative-increase-drugs-by-state}
+```{r percent-increase-drugs-by-state}
 # Increase from January 2015 to March 2021 (all available data)
 od_min <- od_deaths[ , .SD[which.min(date)], by = state_name]
-od_max <- od_deaths[ , .SD[which.max(date)], by = state_name]
+od_max <- od_deaths[ , .SD[which.max(date)], by = state_name] #March 01, 2021
 od_dif <- od_max$deaths - od_min$deaths
 od_perc_inc <- od_dif / od_min$deaths
 od_min$perc_inc <- od_perc_inc * 100
@@ -408,7 +439,8 @@ od_0320$perc_inc <- od_dif0320
 od_perc_incr0320 <- od_0320[, .(state_name, state, indicator, perc_inc)]
 ```
 
-```{r}
+```{r percentage-ods-by-state}
+
 # Creating a DF of OD deaths by % of state pop during COVID
 od_deaths_2021B <- od_deaths[date >= "2020-03-01" & date < "2021-03-01"]
 od_deaths_2021B <- aggregate(od_deaths_2021B$deaths, by=list(State=od_deaths_2021B$state_name), FUN=sum)
@@ -420,13 +452,16 @@ od_deaths_2021B$population <- as.numeric(od_deaths_2021B$population)
 od_deaths_2021B$deathspop <- od_deaths_2021B$x * 100/ od_deaths_2021B$population
 ```
 
-```{r}
-# Plot of covid vs relative drug deaths----------------------------------
-covid_latest <- covid[ , .SD[which.max(date)], by = state_name]
+```{r covid-vs-drugs plots}
+# Plots of covid vs relative drug deaths----------------------------------
+
+# Used below
 covid_0321 <- covid[date == "2021-03-01"]
 
-covid_od <- merge(covid_latest, od_perc_incr, by.x = "state", by.y = "state")
+# Covid data from 03.21 with OD % increase data from 03.20-03.21
 covid_od0320 <- merge(covid_0321, od_perc_incr0320, by.x = "state", by.y = "state")
+
+# Covid data from 03.21 with OD %age of pop deaths from 03.20-03.21
 covid_od20201B <- merge(covid_0321, od_deaths_2021B, by.x = "state_name", by.y = "State")
 
 ggplot(covid_od0320, aes(x = case_perc * 100, y = perc_inc)) +
@@ -438,11 +473,6 @@ ggplot(covid_od20201B, aes(x = death_perc * 100, y = deathspop / 12)) +
   geom_point() +
   geom_smooth() +
   labs(title = "Deaths by COVID vs deaths by overdose in US states", x = "% of state pop killed by COVID-19", y = "% of total state population killed by OD, March 2020 - March 2021", subtitle = "Source: data.cdc.gov API")
-
-#ggplot(covid_od, aes(x = case_perc, y = perc_inc)) +
-#  geom_point() +
-#  geom_smooth() + 
-#  labs(x = "% of state pop killed by COVID-19", y = "% increase in deaths by OD, March 2015 - March 2021")
 ```
 
 These visualizations indicate that there is either no relation between the two factors, or there is even a negative correlation. 
