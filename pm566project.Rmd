@@ -13,17 +13,6 @@ always_allow_html: TRUE
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, fig.align = 'center', fig.width=10)
 ```
 
-# How has COVID-19 affected the US substance abuse crisis?
-
-## Introduction
-
-Drug overdose deaths in the United States have been rising steadily since the turn of the century, and a significant increase in this trend has been observed since the mid-2010's. Public discourse around this tragedy led to cultural and political changes which appeared to have slowed the trend around 2018. Then, in March 2020, the COVID-19 pandemic led to an upheaval in nearly every aspect of daily life, resulting in drastic changes to the way we work, socialize, and interact with society at large. 
-
-Such a fundamental change in the way we live our lives led to universally destabilizing experiences. To slow the spread of the virus, most public places of congregation were shut down, leading to widespread loss of jobs and a crash of the economy. Those with job security soon found new ways to work through the pandemic, and those without it found themselves without a job and an income.
-
-The category of person most likely to be debilitated by the COVID-19 pandemic correlates with the type of person most vulnerable to experiencing drug addiction. Substance abuse is associated with unemployment or underemployment, lack of career opportunities, social isolation, mental health issues, and homelessness. As COVID-19 has undeniably contributed to each of these factors, an investigation into the pandemic’s effect on the substance abuse crisis is warranted.
-
-
 ```{r libraries, include = FALSE}
 library(httr)
 library(xml2)
@@ -36,7 +25,17 @@ library(stringr)
 library(ggsci)
 ```
 
-```{r}
+# How has COVID-19 affected the US substance abuse crisis?
+
+## Introduction
+
+Drug overdose deaths in the United States have been rising steadily since the turn of the century, and a significant increase in this trend has been observed since the mid-2010's. Public discourse around this tragedy led to cultural and political changes which appeared to have slowed the trend around 2018. Then, in March 2020, the COVID-19 pandemic led to an upheaval in nearly every aspect of daily life, resulting in drastic changes to the way we work, socialize, and interact with society at large. 
+
+Such a fundamental change in the way we live our lives led to universally destabilizing experiences. To slow the spread of the virus, most public places of congregation were shut down, leading to widespread loss of jobs and a crash of the economy. Those with job security soon found new ways to work through the pandemic, and those without it found themselves without a job and an income.
+
+The category of person most likely to be debilitated by the COVID-19 pandemic correlates with the type of person most vulnerable to experiencing drug addiction. Substance abuse is associated with unemployment or underemployment, lack of career opportunities, social isolation, mental health issues, and homelessness. As COVID-19 has undeniably contributed to each of these factors, an investigation into the pandemic’s effect on the substance abuse crisis is warranted.
+
+```{r state_names}
 abbrev2 <- read_html(x = "https://simple.wikipedia.org/wiki/List_of_U.S._states_by_traditional_abbreviation")
 abtable2 <- xml_find_all(abbrev2, xpath = "/html/body/div[3]/div[3]/div[5]/div[1]/table[1]/tbody")
 abtable2 <- html_table(abtable2)
@@ -48,6 +47,14 @@ abtable2$state_name = toupper(abtable2$state_name)
 abtable2$state_abbreviation = toupper(abtable2$state_abbreviation)
 abtable2$state_abbreviation <- str_replace_all(abtable2$state_abbreviation, "[[:punct:]]", "")
 abtable2[11,1] <- "GEORGIA"
+
+#Getting state abbreviations, first attempt which stalls out occasionally
+#abbrev <- read_html(x = "https://npiregistry.cms.hhs.gov/registry/API-State-Abbr")
+#abtable <- xml_find_all(abbrev, xpath = "/html/body/div[2]/div[2]/div/div/div/div[2]/div[2]/div[1]/table")
+#abtable <- html_table(abtable)
+#abtable <- rbindlist(abtable)
+#setnames(abtable, "State  Name", "state_name")
+#setnames(abtable, "State Abbreviation", "state_abbreviation")
 ```
 
 ```{r API-census-population}
@@ -70,14 +77,6 @@ setnames(census, "V2", "population")
 setnames(census, "V1", "state_name")
 setnames(census, "V3", "state_number")
 
-#Getting state abbreviations
-#abbrev <- read_html(x = "https://npiregistry.cms.hhs.gov/registry/API-State-Abbr")
-#abtable <- xml_find_all(abbrev, xpath = "/html/body/div[2]/div[2]/div/div/div/div[2]/div[2]/div[1]/table")
-#abtable <- html_table(abtable)
-#abtable <- rbindlist(abtable)
-#setnames(abtable, "State  Name", "state_name")
-#setnames(abtable, "State Abbreviation", "state_abbreviation")
-
 #Combining census and abtable data.tables
 census$state_name = toupper(census$state_name)
 census <- merge(census, abtable2)
@@ -90,11 +89,7 @@ A timeline:
 
 COVID-19 was first detected in the USA on January 17, 2020, in Washington State. By March 13, 2020, President Trump had declared a nationwide emergency, and 2 days later, schools and restaurants began to shut down. By May 9th, 2020, the unemployment rate hit 14.7%, the worst rate since the Great Depression. By September 2020, the US COVID-19 death toll surpassed 200,000, and by January 18, 2021, it had doubled to 400,000. On December 14th, 2020, the initial phase of the vaccination program began, and by March 13, 2021, the US had surpassed 100 million vaccinations administered. By July 1st, 2021, the delta variant had become detected in all 50 US States.
 
-```{r COVID}
-# COVID DATA--------------------------------------------------------------------
-```
-
-```{r covid-vs-time}
+```{r covid_api}
 # Retrieving dimensions
 covidquery <- GET(
   url = "https://data.cdc.gov/resource/9mfq-cb36.json?$limit=50000"
@@ -118,11 +113,13 @@ covid <- covid[, .(state, tot_cases, new_case, tot_death, new_death, date)]
 covid <- covid[order(state, date)]
 ```
 
-```{r}
+```{r merge_census_covid}
 #Combining census and covid data.tables
 covid <- merge(covid, census, by.x = "state", by.y = "state_abbreviation")
 covid$population <- as.numeric(covid$population)
+```
 
+```{r covid_population_norming}
 # Creating death_perc, total death / total population
 covid$death_perc <- covid$tot_death / covid$population
 covid$case_perc <- covid$tot_cases / covid$population
@@ -130,7 +127,8 @@ covid$newdeath_perc <- covid$new_death / covid$population
 covid$newcase_perc <- covid$new_case / covid$population
 ```
 
-```{r}
+
+```{r covid_usa_plot}
 # Summing up COVID data from all states, for total US values--------------------
 covid_usa <- aggregate(cbind(tot_cases, new_case, tot_death, new_death, population) ~ date, data = covid, FUN = sum, na.rm = TRUE)
 covid_usa$death_perc <- covid_usa$tot_death * 100 / covid_usa$population
@@ -155,7 +153,7 @@ ggplot(covid_usa, aes(x = date, y = new_case)) +
 
 This timeline helps provide a framework for interpreting the following simple plots:
 
-```{r}
+```{r covid_basic_plots}
 ggplot(covid_usa, aes(x = date, y = case_perc)) +
   geom_line(color = "red", size = 1) +
   labs(title = "Total US COVID-19 cases by % of US population", subtitle = "Source: data.cdc.gov API")  +
@@ -184,7 +182,7 @@ ggplot(covid_usa, aes(x = date, y = death_perc)) +
 
 There has been considerable difference between how each of the US States has experienced COVID-19:
 
-```{r}
+```{r covid_graph_by_state}
 # Ploting covid deaths by population percent----------------------------------
 ggplot(covid, aes(x = date, y = case_perc * 100, color = state_name)) +
   geom_line() +
@@ -206,11 +204,13 @@ ggplot(covid, aes(x = date, y = death_perc * 100, color = state_name)) +
 #  geom_line(show.legend = FALSE) +
 #  labs(title = "New COVID-19 deaths by % of state population")+
 #  xlab("Date") + ylab("Daily COVID-19 deaths") 
+```
 
+```{r covid_max}
 covid_max <- covid[ , .SD[which.max(date)], by = state]
 covid_max <- covid_max[order(-death_perc)]
-
 ```
+
 
 The state with the highest number deaths per population, `r covid_max[1,7]`, experienced per population mortality rates `r format(round(covid_max[1,10] * 100 / covid_max[nrow(covid_max),10]), 3)`% higher than that of the lowest number of deaths per population, `r covid_max[nrow(covid_max),7]`.
 
@@ -218,7 +218,7 @@ These differences are a result of a complicated web of interconnected variables:
 
 Having the above information in hand will help provide perspective as a preliminary investigation into US drug useage patterns is explored.
 
-```{r load-drugs}
+```{r drugs_api}
 # Retrieving dimensions
 # https://data.cdc.gov/NCHS/VSRR-Provisional-Drug-Overdose-Death-Counts/xkb8-kh2a
 
@@ -235,7 +235,7 @@ drugs <- rbindlist(drugs_content[1:length(drugs_content)], fill=TRUE)
 drugs$state_name = toupper(drugs$state_name)
 ```
 
-```{r cdc_drugs-processing}
+```{r drugs-processing}
 # Cleaning up the drugs data.table----------------------------------------------
 
 drugs$date <- as.Date(paste0(drugs$year, drugs$month, "01"), format="%Y%B%d")
@@ -267,7 +267,7 @@ The CDC provides a vast and thorough dataset giving monthly 12-month rolling sum
 
 (Note: No data regarding specific drug types is available for the years of 2016 and 2017. I'm searching for a way to fill in this data)
 
-```{r drugs_usa}
+```{r drugs_usa_plot}
 # Summing up drug deaths in all states for a total US value---------------------
 drugs_usa <- drugs[, sum(deaths, na.rm = TRUE), by=list(indicator, date)]
 setnames(drugs_usa, "V1", "deaths")
@@ -281,11 +281,12 @@ ggplot(drugs_usa2, aes(x = date, y = deaths, color = indicator)) +
   labs(title = "OD deaths from all drug categories, 2015-2021", x = "Date", y = "12 month rolling average deaths from OD", subtitle = "Source: data.cdc.gov API") +
   scale_x_date(date_breaks = "year",  date_labels = "%Y")
 ```
+
 Zooming in on the most telling parts of this graph:
 
 Shown below is overdoses in the US from 2018-2021, broken down by drug type and subtype. Some of these are independent of all others: Psychostimulants (methamphedamine) and cocaine have their own categories. Others share data: there is one category for all opioids, another for natural opioids, and another for synthetic opioids.
 
-```{r}
+```{r drugs_usa_2_3_2018}
 # Creating drugs_usa2 and drugs_usa3 for plotting-------------------------------
 #drugs_usa2 <- drugs_usa2[indicator != c("Number of Drug Overdose Deaths")]
 drugs_usa2 <- drugs_usa2[indicator != c("Natural & semi-synthetic opioids, incl. methadone")]
@@ -295,7 +296,7 @@ drugs_usa2 <- drugs_usa2[indicator != c("Cocaine")]
 drugs_usa2 <- drugs_usa2[indicator != c("Heroin")]
 drugs_usa2 <- drugs_usa2[indicator != c("Methadone")]
 
-# Removing 2016/2017 data for drugs_usa_2018
+# Removing 2016/2017 data from drugs_usa to make drugs_usa_2018
 drugs_usa_2018 <- drugs_usa[date > "2017-12-01"]
 drugs_usa2_2018 <- drugs_usa_2018[indicator != "Number of Deaths"]
 drugs_usa2_2018 <- drugs_usa2_2018[indicator != "Number of Drug Overdose Deaths"]
@@ -306,7 +307,7 @@ indicators3 <- c(indicators[2],indicators[6],indicators[8])
 drugs_usa3_2018 <- drugs_usa_2018[indicator %in% indicators3]
 ```
 
-```{r}
+```{r drugs_usa2_2018_plot}
 ggplot(drugs_usa2_2018, aes(x = date, y = deaths, color = indicator)) +
   geom_line() +
   theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7)) +
@@ -315,7 +316,7 @@ ggplot(drugs_usa2_2018, aes(x = date, y = deaths, color = indicator)) +
 
 The following graph immediately suggests some insights. For one, there does appear to be a clear acceleration in the rate of drug overdose deaths following the onset of the COVID-19 pandemic. Another is regarding the types of drugs involved: It is opioids that are by far the most implicated drug, and it's the synthetic, not the natural opioids, that are the primary driver. Natural opioids are those such as morphine and codeine; common semi-synthetic opioids are heroin and oxycodone. 
 
-```{r}
+```{r drugs_usa3_2018_plot}
 #
 ggplot(drugs_usa3_2018, aes(x = date, y = deaths, color = indicator)) +
   geom_line(size = 1) +
@@ -330,7 +331,7 @@ ggplot(drugs_usa3_2018, aes(x = date, y = deaths, color = indicator)) +
 
 The synthetic opioid behind this great increase is fentanyl, which is often illicitly manufactured and commonly used to lace other drugs. There has been considerable media coverage of the rise of fentanyl and the damage it is causing the US, and many government agencies have declared an "opioid epidemic."
 
-```{r}
+```{r drugs_usa2_plot}
 ggplot(drugs_usa2, aes(x = date, y = deaths, color = indicator)) +
   geom_line(size = 1) +
   theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7)) +
@@ -341,7 +342,8 @@ ggplot(drugs_usa2, aes(x = date, y = deaths, color = indicator)) +
   scale_color_npg()
 ```
 
-```{r}
+```{r max_min_date_drugs}
+# the most recent values in the drugs dataset
 maxod <- drugs_usa[date == "2021-03-01" & indicator == "Number of Drug Overdose Deaths"]
 maxsynth <- drugs_usa[date == "2021-03-01" & indicator == "Synthetic opioids, excl. methadone"]
 
@@ -349,13 +351,12 @@ minod <- drugs_usa[date == "2015-01-01" & indicator == "Number of Drug Overdose 
 minsynth <- drugs_usa[date == "2015-01-01" & indicator == "Synthetic opioids, excl. methadone"]
 ```
 
-
 In January 2015 - the earliest data provided in this dataset - synthetic opioids accounted for `r format(round(minsynth[[3]] * 100 / minod[[3]]), 3)`% of all overdose deaths. As of March 01, 2021 - the most recent data provided in this dataset - synthetic opioids were responsible for `r format(round(maxsynth[[3]] * 100 / maxod[[3]]), 3)`% of all drug overdose deaths in the US. During this time, the total number of deaths due to synthetic opioids grew by `r format(round(maxsynth[[3]] * 100/ minsynth[[3]]), 3)`%.
 
 Similar to the disparity in how each state experienced the COVID-19 pandemic, each state is experiencing the drug epidemic in its own way:
-```{r od_deaths}
-# Making a data.table of just "Number of Drug Overdose Deaths"------------------
 
+```{r od_deaths_states_plots}
+# Making a data.table of just "Number of Drug Overdose Deaths"------------------
 od_deaths <- drugs[indicator == "Number of Drug Overdose Deaths"]
 od_deaths <- od_deaths[order(state_name, date)]
 
@@ -365,17 +366,12 @@ ggplot(od_deaths, aes(x = date, y = deaths, color = state_name)) +
   labs(title = "Total 12 month rolling average deaths by OD, by state", x = "Date", y = "12 month rolling average OD deaths", subtitle = "Source: data.cdc.gov API") +
   theme(legend.title = element_text(size = 5), legend.text = element_text(size = 5))
 
-# Plotting just one state without creating a new data.table first---------------
-#ggplot(od_deaths[state_name == "ALABAMA"], aes(x = date, y = deaths)) +
-#  geom_line() +
-#  labs(title = "Montly OD deaths in one state")
-
 # Plotting od deaths scaled by population
 ggplot(od_deaths, aes(x = date, y = deathspop, color = state_name)) +
   geom_line(show.legend = FALSE) +
   labs(title = "12 month rolling average OD deaths, by % of state pop", x = "Date", y = "12 month rolling average OD deaths, by % of state pop.", subtitle = "Source: data.cdc.gov API")
 
-# Out of curiosity, getting a sum of deathspop per state]
+# Creating a sum of deathspop per state
 od_deaths_sum <- od_deaths[, sum(deathspop, na.rm = TRUE), by = state]
 od_deaths_sum <- od_deaths_sum[order(-V1)]
 
@@ -391,25 +387,29 @@ OR
 
 Similarly, whether COVID-19 deaths per capita is correlated with all overdose deaths in the same timeframe, per capita:
 
-```{r increase-drugs-by-state}
-# Increase from January 2015 to March 2021 (all available data)-----------------
+```{r relative-increase-drugs-by-state}
+# Increase from January 2015 to March 2021 (all available data)
 od_min <- od_deaths[ , .SD[which.min(date)], by = state_name]
 od_max <- od_deaths[ , .SD[which.max(date)], by = state_name]
 od_dif <- od_max$deaths - od_min$deaths
 od_perc_inc <- od_dif / od_min$deaths
 od_min$perc_inc <- od_perc_inc * 100
 
-# This is the % increase in OD deaths from January 2015 to March 2021 per state-
+
+# This is the % increase in OD deaths from January 2015 to March 2021 per state
 od_perc_incr <- od_min[, .(state_name, state, indicator, perc_inc)]
 
-# This is the % increase in OD deaths from March 2020 to March 2021 per state-
+# Increase from March 2020 to March 2021
 od_0320 <- od_deaths[date == "2020-03-01"]
 od_dif0320 <- (od_max$deaths - od_0320$deaths) * 100 / od_0320$deaths
 od_0320$perc_inc <- od_dif0320
+
+# This is the % increase in OD deaths from March 2020 to March 2021 per state
 od_perc_incr0320 <- od_0320[, .(state_name, state, indicator, perc_inc)]
 ```
 
 ```{r}
+# Creating a DF of OD deaths by % of state pop during COVID
 od_deaths_2021B <- od_deaths[date >= "2020-03-01" & date < "2021-03-01"]
 od_deaths_2021B <- aggregate(od_deaths_2021B$deaths, by=list(State=od_deaths_2021B$state_name), FUN=sum)
 od_deaths_2021B <- merge(od_deaths_2021B, census, by.x = "State", by.y="state_name")
@@ -452,7 +452,6 @@ While this may seem counterintuitive, COVID-19 affected the US in more ways than
 This aspect of the question requires further investigation.
 
 ## Conclusion
-
 This investigation has only suggested more directions of research that should be pursued. I would have liked to do more preliminary investigating of the regional characteristics of both the COVID-19 and drug overdose datasets using the library leaflet, but it was out of the scope of this report. I would like to merge economic data into this analysis, allowing me to consider the degree to which state economies suffered from the COVID-19 associated shutdowns, to see if interesting correlations with drug usage can be discovered. I am interested in finding more spatially precise datasets, perhaps at the county level, as each state contains a multitude of regions which act independently of one another. I feel that this topic is an important and interesting one with many insights left to discover, and I intend to continue pursuing it.
 
 ## Methods
@@ -472,56 +471,3 @@ https://www.hhs.gov/opioids/about-the-epidemic/index.html
 https://www.cdc.gov/museum/timeline/covid19.html
 
 https://data.cdc.gov/NCHS/VSRR-Provisional-Drug-Overdose-Death-Counts/xkb8-kh2a
-
-
-
-
-```{r unused chunk}
-# 2015-03-01
-date1 <- od_deaths$date[3]
-date1 <- ymd(date1)
-# 2016-03-01
-date2 <- date1 + months(12)
-
-# Creates a DT of data between two dates given
-myfunc2 <- function(x,y){od_deaths[od_deaths$date >= x & od_deaths$date < y]}
-p <- myfunc2(date1, date2)
-
-# Sum up deaths between the two dates (March 2015-2016 here) by state. 
-yearly_deaths <- aggregate(p$deaths, by=list(State=p$state_name), FUN=sum)
-
-# Now again, for the next 5 years. One by one, merge these vectors together.
-z <- c(12, 24, 36, 48, 60)
-for (val in z) {
-  p <- myfunc2(date1 + months(val), date2 + months(val))
-  pp <- aggregate(p$deaths, by=list(State=p$state_name), FUN=sum)
-  yearly_deaths <- merge(yearly_deaths, pp, by.x = "State", by.y = "State")
-}
-
-#Column titles came out weird, fixing them:
-setnames(yearly_deaths, "x.x", "March 01, 2016")
-setnames(yearly_deaths, "x.y", "March 01, 2017")
-setnames(yearly_deaths, "x.x", "March 01, 2018")
-setnames(yearly_deaths, "x.y", "March 01, 2019")
-setnames(yearly_deaths, "x.x", "March 01, 2020")
-setnames(yearly_deaths, "x.y", "March 01, 2021")
-
-# Reshape yearly_deaths before plotting
-
-yd_long <- pivot_longer(yearly_deaths, cols = starts_with('M'))
-setnames(yd_long, "name", "date")
-setnames(yd_long, "value", "yearly_deaths")
-yd_long$date <- as.Date(yd_long$date, "%B %d, %Y")
-
-# Normalizing values per state population
-yd_long <- merge(yd_long, census, by.x = "State", by.y = "state_name")
-yd_long$population <- as.numeric(yd_long$population)
-yd_long$norm_deaths <- yd_long$yearly_deaths / yd_long$population
-
-# The final plot of this whole preposterous chunk
-#ggplot(yd_long, aes(x = date, y = norm_deaths, color = State)) +
-#  geom_line(show.legend = FALSE) +
-#  geom_point(show.legend = FALSE) +
-#  labs(title = "Yearly drug overdose deaths per state, normalized")
-```
-
