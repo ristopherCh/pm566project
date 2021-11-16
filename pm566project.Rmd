@@ -47,6 +47,8 @@ abtable2$state_name = toupper(abtable2$state_name)
 abtable2$state_abbreviation = toupper(abtable2$state_abbreviation)
 abtable2$state_abbreviation <- str_replace_all(abtable2$state_abbreviation, "[[:punct:]]", "")
 abtable2[11,1] <- "GEORGIA"
+abtable2 <- abtable2 %>% add_row(state_name = "UNITED STATES", state_abbreviation = "US")
+abtable2 <- abtable2[order(state_name)]
 
 #Getting state abbreviations, first attempt which stalls out occasionally
 #abbrev <- read_html(x = "https://npiregistry.cms.hhs.gov/registry/API-State-Abbr")
@@ -70,16 +72,24 @@ censusquery <- GET(
 
 # Processing data
 census_content <- content(censusquery)
-
 census <- rbindlist(census_content)
-census <- census[order(V3)]
+census <- census[-1,]
 setnames(census, "V2", "population")
 setnames(census, "V1", "state_name")
 setnames(census, "V3", "state_number")
+census$population <- as.numeric(census$population)
+census$state_number <- as.numeric(census$state_number)
+census <- census %>% add_row(state_name = "United States", population = sum(census$population), state_number = 57)
+census <- census[order(state_name)]
+
+
+
+View(census)
 
 #Combining census and abtable data.tables
 census$state_name = toupper(census$state_name)
 census <- merge(census, abtable2)
+#census$population <- as.numeric(census$population)
 #census$population <- as.numeric(census$population)
 ```
 
@@ -235,6 +245,12 @@ drugs <- rbindlist(drugs_content[1:length(drugs_content)], fill=TRUE)
 drugs$state_name = toupper(drugs$state_name)
 ```
 
+```{r}
+unique(drugs$state_name)
+unique(census$state_name)
+```
+
+
 ```{r drugs-processing}
 # Cleaning up the drugs data.table----------------------------------------------
 
@@ -243,8 +259,9 @@ setnames(drugs, "data_value", "deaths")
 drugs$deaths <- as.numeric(drugs$deaths)
 
 # Combining drugs and census data
-drugs <- merge(drugs, census, by.x = "state_name", by.y = "state_name")
-drugs$population <- as.numeric(drugs$population)
+drugs <- merge(drugs, census, by = "state_name", all = TRUE)
+
+View(drugs %>% filter(state_name == c("CALIFORNIA", "UNITED STATES")))
 
 # Removing extraneous columns from 'drugs'
 drugs <- drugs[, .(state_name, state, indicator, deaths, date, year, population, state_number)]
@@ -265,6 +282,8 @@ drugs <- drugs %>% drop_na(deaths)
 nrow(drugs) #22,943
 
 drugs <- drugs[order(state_number, date)]
+
+unique(drugs$state)
 
 # Note to self: Many states (ie AL) never have any data other than # of drug overdose deaths. No states have anything but this value for years 2016 and 2017. 
 ```
@@ -298,14 +317,30 @@ The CDC provides a vast and thorough dataset giving monthly 12-month rolling sum
 
 (Note: No data regarding specific drug types is available for the years of 2016 and 2017. I'm searching for a way to fill in this data)
 
-```{r drugs_usa_plot}
-# Summing up drug deaths in all states for a total US value---------------------
-drugs_usa <- drugs[, sum(deaths, na.rm = TRUE), by=list(indicator, date)]
-setnames(drugs_usa, "V1", "deaths")
+```{r drugs_usa_temp}
+# Filtering DF to be just US
+drugs_usa <- drugs %>% filter(state == "US")
 drugs_usa <- drugs_usa[order(date, indicator)]
+
+View(drugs_usa)
 
 drugs_usa2 <- drugs_usa[indicator != c("Number of Deaths")]
 
+ggplot(drugs_usa2, aes(x = date, y = deaths, color = indicator)) +
+  geom_line() +
+  theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7)) +
+  labs(title = "Total US OD deaths from all drug categories, 2015-2021", x = "Date", y = "12 month rolling average deaths from OD", subtitle = "Source: data.cdc.gov API") +
+  scale_x_date(date_breaks = "year",  date_labels = "%Y")
+```
+
+```{r drugs_usa_plot}
+# # Summing up drug deaths in all states for a total US value---------------------
+# drugs_usa <- drugs[, sum(deaths, na.rm = TRUE), by=list(indicator, date)]
+# setnames(drugs_usa, "V1", "deaths")
+# drugs_usa <- drugs_usa[order(date, indicator)]
+# 
+# drugs_usa2 <- drugs_usa[indicator != c("Number of Deaths")]
+# 
 # ggplot(drugs_usa2, aes(x = date, y = deaths, color = indicator)) +
 #   geom_line() +
 #   theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7)) +
@@ -313,11 +348,12 @@ drugs_usa2 <- drugs_usa[indicator != c("Number of Deaths")]
 #   scale_x_date(date_breaks = "year",  date_labels = "%Y")
 ```
 
+
 Zooming in on the most telling parts of this graph:
 
-Shown below is overdoses in the US from 2018-2021, broken down by drug type and subtype. Some of these are independent of all others: Psychostimulants (methamphedamine) and cocaine have their own categories. Others share data: there is one category for all opioids, another for natural opioids, and another for synthetic opioids.
+Shown below is overdoses in the US from 2015-2021, broken down by drug type and subtype. Some of these are independent of all others: Psychostimulants (methamphedamine) and cocaine have their own categories. Others share data: there is one category for all opioids, another for natural opioids, and another for synthetic opioids.
 
-```{r drugs_usa_2_3_2018}
+```{r drugs_usa_2_3}
 # Creating drugs_usa2 and drugs_usa3 for plotting-------------------------------
 #drugs_usa2 <- drugs_usa2[indicator != c("Number of Drug Overdose Deaths")]
 drugs_usa2 <- drugs_usa2[indicator != c("Natural & semi-synthetic opioids, incl. methadone")]
@@ -327,33 +363,28 @@ drugs_usa2 <- drugs_usa2[indicator != c("Cocaine")]
 drugs_usa2 <- drugs_usa2[indicator != c("Heroin")]
 drugs_usa2 <- drugs_usa2[indicator != c("Methadone")]
 
-# Removing 2016/2017 data from drugs_usa to make drugs_usa_2018
-drugs_usa_2018 <- drugs_usa[date > "2017-12-01"]
-drugs_usa2_2018 <- drugs_usa_2018[indicator != "Number of Deaths"]
-drugs_usa2_2018 <- drugs_usa2_2018[indicator != "Number of Drug Overdose Deaths"]
-
 indicators = unique(drugs$indicator)
 indicators3 <- c(indicators[2],indicators[6],indicators[8])
 
-drugs_usa3_2018 <- drugs_usa_2018[indicator %in% indicators3]
+drugs_usa3 <- drugs_usa[indicator %in% indicators3]
 ```
 
-```{r drugs_usa2_2018_plot}
-ggplot(drugs_usa2_2018, aes(x = date, y = deaths, color = indicator)) +
+```{r drugs_usa2_plot}
+ggplot(drugs_usa2, aes(x = date, y = deaths, color = indicator)) +
   geom_line() +
   theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7)) +
-  labs(title = "Overdose deaths by drug category, 2018-2021", x = "Date", y = "12 month rolling average OD deaths by drug category", subtitle = "Source: data.cdc.gov API")
+  labs(title = "Overdose deaths by drug category", x = "Date", y = "12 month rolling average OD deaths by drug category", subtitle = "Source: data.cdc.gov API")
 ```
 
 The following graph immediately suggests some insights. For one, there does appear to be a clear acceleration in the rate of drug overdose deaths following the onset of the COVID-19 pandemic. Another is regarding the types of drugs involved: It is opioids that are by far the most implicated drug, and it's the synthetic, not the natural opioids, that are the primary driver. Natural opioids are those such as morphine and codeine; common semi-synthetic opioids are heroin and oxycodone. 
 
-```{r drugs_usa3_2018_plot}
+```{r drugs_usa3_plot}
 #
-ggplot(drugs_usa3_2018, aes(x = date, y = deaths, color = indicator)) +
+ggplot(drugs_usa3, aes(x = date, y = deaths, color = indicator)) +
   geom_line(size = 1) +
-  geom_vline(xintercept=as.numeric(drugs_usa3_2018$date[80]), linetype="dashed", size = 1) +
-  annotate(x = drugs_usa3_2018$date[82], y = 59000, label = "Start of COVID-19", geom="text", angle = 90) +
-  labs(x = "Date", y = "12 month rolling average OD deaths by drug category", title = "Opioid contribution to total overdose deaths, 2018-2021", subtitle = "Source: data.cdc.gov API") +
+  geom_vline(xintercept=as.numeric(drugs_usa3$date[80]), linetype="dashed", size = 1) +
+  annotate(x = drugs_usa3$date[82], y = 59000, label = "Start of COVID-19", geom="text", angle = 90) +
+  labs(x = "Date", y = "12 month rolling average OD deaths by drug category", title = "Opioid contribution to total overdose deaths", subtitle = "Source: data.cdc.gov API") +
   #scale_x_date(date_breaks = "6 month", date_minor_breaks = "1 month", date_labels = "%b-%y") +
   theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7)) +
   ylim(0, 100000) +
