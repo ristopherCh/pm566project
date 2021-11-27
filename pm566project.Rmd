@@ -191,21 +191,25 @@ There has been considerable difference between how each of the US States has exp
 
 ```{r covid_graph_by_state}
 # Ploting covid deaths by population percent----------------------------------
-ggplot(covid, aes(x = date, y = case_perc, color = state_name)) +
+ccpp <- ggplot(covid, aes(x = date, y = case_perc, color = state_name)) +
   geom_line() +
   labs(title = "COVID-19 cases by % of state population", subtitle = "Source: data.cdc.gov API") +
   xlab("Date") + ylab("COVID-19 cases by % of state population") +
   theme(legend.title = element_text(size = 5), legend.text = element_text(size = 5))
+
+ggplotly(ccpp)
 
 #ggplot(covid, aes(x = date, y = newcase_perc, color = state_name)) +
 #  geom_line(show.legend = FALSE) +
 #  labs(title = "New COVID-19 cases by % of state population") +
 #  xlab("Date") + ylab("Daily COVID-19 cases")
 
-ggplot(covid, aes(x = date, y = death_perc, color = state_name)) +
-  geom_line(show.legend = FALSE) +
+cdpp <- ggplot(covid, aes(x = date, y = death_perc, color = state_name)) +
+  geom_line() +
   labs(title = "COVID-19 deaths by % of state population", subtitle = "Source: data.cdc.gov API")+
   xlab("Date") + ylab("COVID-19 deaths by % of state population")
+
+ggplotly(cdpp)
 
 #ggplot(covid, aes(x = date, y = newdeath_perc, color = state_name)) +
 #  geom_line(show.legend = FALSE) +
@@ -261,7 +265,7 @@ drugs$indicator <- str_trim(drugs$indicator, side = c("both"))
 drugs <- drugs[indicator != "Percent with drugs specified"]
 
 # Making a deaths per population column
-drugs$deathspop <- drugs$deaths * 100 / drugs$population
+drugs$odpop_perc <- drugs$deaths * 100 / drugs$population
 
 # Dropping rows where deaths == NA
 drugs <- drugs %>% drop_na(deaths)
@@ -307,25 +311,10 @@ drugs_usa <- drugs_usa[indicator != c("Number of Deaths")]
 
 # Plot all indicators
 ggplot(drugs_usa, aes(x = date, y = deaths, color = indicator)) +
-  geom_line() +
+  geom_line(size = 1) +
   theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7)) +
   labs(title = "Total US OD deaths from all drug categories, 2015-2021", x = "Date", y = "12 month rolling average deaths from OD", subtitle = "Source: data.cdc.gov API") +
   scale_x_date(date_breaks = "year",  date_labels = "%Y")
-```
-
-```{r drugs_usa_aggregate}
-# # Summing up drug deaths in all states for a total US value---------------------
-# drugs_usa <- drugs[, sum(deaths, na.rm = TRUE), by=list(indicator, date)]
-# setnames(drugs_usa, "V1", "deaths")
-# drugs_usa <- drugs_usa[order(date, indicator)]
-# 
-# drugs_usa <- drugs_usa[indicator != c("Number of Deaths")]
-# 
-# ggplot(drugs_usa, aes(x = date, y = deaths, color = indicator)) +
-#   geom_line() +
-#   theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7)) +
-#   labs(title = "OD deaths from all drug categories, 2015-2021", x = "Date", y = "12 month rolling average deaths from OD", subtitle = "Source: data.cdc.gov API") +
-#   scale_x_date(date_breaks = "year",  date_labels = "%Y")
 ```
 
 Zooming in on the most telling parts of this graph:
@@ -343,7 +332,7 @@ drugs_usa3 <- drugs_usa[indicator %in% indicators3]
 
 ```{r drugs_usa2_plot1}
 ggplot(drugs_usa2, aes(x = date, y = deaths, color = indicator)) +
-  geom_line() +
+  geom_line(size = 1) +
   geom_vline(xintercept= as.Date("2020-02-01"), linetype="dashed", size = 1) +
   annotate(x = as.Date("2020-03-01"), y = 59000, label = "Start of COVID-19", geom="text", angle = 90) +
   theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7)) +
@@ -406,14 +395,14 @@ allod <- ggplot(od_deaths, aes(x = date, y = deaths, color = state_name)) +
 #ggplotly(allod)
 
 # Plotting od deaths scaled by population
-allodpop <- ggplot(od_deaths, aes(x = date, y = deathspop, color = state_name)) +
+allodpop <- ggplot(od_deaths, aes(x = date, y = odpop_perc, color = state_name)) +
   geom_line() + #show.legend = FALSE
   labs(title = "12 month rolling average OD deaths, by % of state pop", x = "Date", y = "12 month rolling average OD deaths, by % of state pop.", subtitle = "Source: data.cdc.gov API")
 
 ggplotly(allodpop)
 
-# Creating a sum of deathspop per state
-# od_deaths_sum <- od_deaths[, sum(deathspop, na.rm = TRUE), by = state]
+# Creating a sum of odpop_perc per state
+# od_deaths_sum <- od_deaths[, sum(odpop_perc, na.rm = TRUE), by = state]
 # od_deaths_sum <- od_deaths_sum[order(-V1)]
 
 ```
@@ -430,18 +419,19 @@ Similarly, whether COVID-19 deaths per capita is correlated with all overdose de
 
 ```{r percent-increase-drugs-by-state}
 od_min <- od_deaths[ , .SD[which.min(date)], by = state_name] #2015-01-01
-od_max <- od_deaths[ , .SD[which.max(date)], by = state_name] #2021-04-01
+#od_max <- od_deaths[ , .SD[which.max(date)], by = state_name] #2021-04-01
+od_max <- od_deaths[date == "2021-04-01"] #Let's just keep this here
 od_0420 <- od_deaths[date == "2020-04-01"]
 
 # Percent increase from min date to max date (all available data)-----------------------
-od_max$total_odincrease <- (od_max$deaths - od_min$deaths) * 100 / od_min$deaths
+#od_max$total_odincrease <- (od_max$deaths - od_min$deaths) * 100 / od_min$deaths #not relevant
 
 # Percent increase from March 2020 to March 2021----------------------------------------
-od_max$april2020_odincrease <- (od_max$deaths - od_0420$deaths) * 100 / od_0420$deaths
+od_max$odincrease_apr20apr21 <- (od_max$deaths - od_0420$deaths) * 100 / od_0420$deaths
 ```
 
 ```{r percentage-ods-by-state}
-# The deathspop column is the percentage of the total state population that died of OD's from 04-20 to 04-21
+# The odpop_perc column is the percentage of the total state population that died of OD's from 04-20 to 04-21
 od_0421 <- od_deaths[date == "2021-04-01"]
 ```
 
@@ -452,30 +442,41 @@ od_0421 <- od_deaths[date == "2021-04-01"]
 covid_0421 <- covid[date == "2021-04-01"]
 
 # Covid data from 03.21 with OD % increase data from 04.20-04.21
-covid_od_inc <- merge(covid_0421, od_max, by.x = "state", by.y = "state")
+covid_od <- merge.data.frame(covid_0421, od_max)
 
-# Covid data from 03.21 with OD %age of pop deaths from 03.20-03.21
-covid_od_pop <- merge(covid_0421, od_0421, by.x = "state", by.y = "state")
-
-od_cov1 <- ggplot(covid_od_inc, aes(x = death_perc, y = april2020_odincrease)) +
+od_cov1 <- ggplot(covid_od, aes(x = death_perc, y = odincrease_apr20apr21)) +
   geom_point() +
   geom_smooth() +
   labs(title = "Deaths by COVID vs deaths by overdose in US states", x = "% of state pop killed by COVID-19", y = "% increase in deaths by OD, April 2020 - April 2021", subtitle = "Source: data.cdc.gov API")
 
-od_cov2 <- ggplot(covid_od_pop, aes(x = case_perc, y = deathspop)) +
+od_cov2 <- ggplot(covid_od, aes(x = case_perc, y = odpop_perc)) +
   geom_point() +
   geom_smooth() +
   labs(title = "Cases of COVID vs deaths by overdose in US states", x = "% of state pop infected by COVID-19", y = "% of total state population killed by OD, April 2020 - April 2021", subtitle = "Source: data.cdc.gov API")
 
 ggplotly(od_cov1)
 ggplotly(od_cov2)
+
+plot_ly(data = covid_od,
+        x = ~death_perc,
+        y = ~odincrease_apr20apr21,
+        type = "scatter",
+        text = ~state_name
+        )
+        
+plot_ly(data = covid_od,
+        x = ~case_perc,
+        y = ~odpop_perc,
+        type = "scatter",
+        text = ~state_name
+        )
 ```
 
 These visualizations indicate that there is either no relation between the two factors, or there is even a negative correlation.
 
 Consider geographical distribution of these factors:
 
-```{r covid map}
+```{r maps}
 g <- list(
   scope = 'usa',
   projection = list(type = 'albers usa'),
@@ -485,16 +486,16 @@ g <- list(
 # Covid death as a percentage of state population, most recent available data
 plot_geo() %>%
   add_trace(
-    z = ~covid_od_inc$case_perc, text = covid_od_inc$state_name, span = I(0),
-    locations = covid_od_inc$state, locationmode = 'USA-states'
+    z = ~covid_od$case_perc, text = covid_od$state_name, span = I(0),
+    locations = covid_od$state, locationmode = 'USA-states'
   ) %>%
   layout(geo = g)
 
 # OD deaths as a percentage of state population since COVID began
 plot_geo() %>%
   add_trace(
-    z = ~covid_od_inc$april2020_odincrease, text = covid_od_inc$state_name, span = I(0),
-    locations = covid_od_inc$state, locationmode = 'USA-states'
+    z = ~covid_od$odincrease_apr20apr21, text = covid_od$state_name, span = I(0),
+    locations = covid_od$state, locationmode = 'USA-states'
   ) %>%
   layout(geo = g)
 ```
@@ -509,7 +510,7 @@ econquery <- GET(url = "https://apps.bea.gov/api/data/?&UserID=0BACEFA6-DE0F-459
                  )
 
 # Checking if the website is active
-econquery$status_code
+#econquery$status_code
 
 # Processing data
 econ_content <- content(econquery)
@@ -522,20 +523,128 @@ econ <- rbindlist(econ_content$BEAAPI$Results$Data[1:length(econ_content$BEAAPI$
 econ$TimePeriod <- as.Date(as.yearqtr(econ$TimePeriod))
 econ$DataValue <- as.numeric(gsub(",","",econ$DataValue))
 econ$GeoName <- toupper(econ$GeoName)
-View(econ)
 
+
+
+
+```
+
+```{r}
+#econ_min <- econ[ , .SD[which.min(TimePeriod)], by = GeoFips]
 econ2 <- econ %>% filter(GeoName %in% abtable2$state_name)
 econ2 <- econ2 %>% filter(GeoName != "UNITED STATES")
-View(econ2)
+econ3 <- econ2 %>% filter(!GeoName %in% c("CALIFORNIA", "TEXAS", "NEW YORK", "FLORIDA"))
+econ_min <- econ2[TimePeriod == "2020-01-01"]
+setnames(econ_min, "DataValue", "relative_value")
+econ4 <- merge(econ, econ_min, by = "GeoName")
+econ4$relative <- econ4$DataValue / econ4$`relative_value`
+ggecon <- ggplot(econ2, aes(x = TimePeriod, y = DataValue, color = GeoName)) +
+  geom_point()
+ggplotly(ggecon)
+ggecon
+```
+
+```{r}
+# drop
+ # <- econ2$DataValue where TimePeriod = "2020-04-01" / econ2#DataValue where TimePeriod = "2020-01-01" by State
+q1 <- econ2 %>% filter(TimePeriod == "2020-10-01")
+q2 <- econ2 %>% filter(TimePeriod == "2020-01-01")
+q3 <- 1 - (q1$DataValue / q2$DataValue)
+
+
+
+econ5 <- econ2 %>% filter(TimePeriod == "2021-04-01")
+econ5$econdrop <- q3
+econ5 <- select(econ5, c("GeoName", "econdrop"))
+q4 <- merge(covid_od, econ5, by.x = "state_name", by.y = "GeoName")
+q5 <- merge(covid_od, econ5, by.x = "state_name", by.y = "GeoName")
+#q4 <- q4 %>% filter(!state_name %in% c("ALASKA", "NEVADA", "WYOMING", "TENNESSEE"))
+q4 <- q4 %>% filter(!state_name %in% c("NEVADA","TENNESSEE"))
+
+plot_ly(data = q4,
+        x = ~econdrop,
+        y = ~odincrease_apr20apr21,
+        type = "scatter",
+        text = ~state_name
+        )
+
+w1 <- ggplot(q4, aes(x = econdrop, y = odincrease_apr20apr21)) +
+  geom_point() +
+  geom_smooth() +
+  labs(title = "Economic recession vs 12 month OD increase")
+
+ggplotly(w1)
+
+ggplot(q4, aes(x = econdrop, y = death_perc)) +
+  geom_point() +
+  geom_smooth() +
+  labs(title = "Economic recession vs 12 month OD increase")
+
+plot_ly(data = q4,
+        x = ~econdrop,
+        y = ~death_perc,
+        type = "scatter",
+        text = ~state_name
+        )
+
+```
+
+
+
+
+```{r unemployment}
+# https://www.bls.gov/lau/data.htm
+
+unemployment <- fread("stateunemployment.csv")
+unemployment <- head(unemployment, -3)
+unemployment <- melt(unemployment, id.vars="STATE", variable.name = "date")
+
+UD <- unemployment$date
+UDF <- as.Date(paste0("01-", UD), format = "%d-%b-%y")
+unemployment$date <- UDF
+unemployment <- unemployment[order(STATE, date)]
+
+View(unemployment)
 ```
 
 
 ```{r}
-# Plotting od deaths scaled by population
-ggecon <- ggplot(econ2, aes(x = TimePeriod, y = DataValue, color = GeoName)) +
-  geom_point()
+unem <- ggplot(unemployment, aes(x = date, y = value, color = STATE)) +
+  geom_line()
 
-ggplotly(ggecon)
+ggplotly(unem)
+```
+
+
+```{r}
+u0901 <- unemployment %>% filter(date == "2021-03-01")
+u0301 <- unemployment %>% filter(date == "2020-03-01")
+unemployment_change <- select(u0301, c("STATE"))
+unemployment_change$unemp_change <- u0901$value - u0301$value
+
+u0401 <- filter(unemployment, date == "2020-05-01")
+unemployment_change$unemp_static <- u0401$value
+```
+
+
+```{r unemployment_merge}
+u2 <- merge(covid_od, unemployment_change, by.x = "state_name", by.y = "STATE")
+#u2 <- u2 %>% filter(!state_name %in% c("HAWAII", "NEVADA", "MICHIGAN", "WYOMING"))
+u2 <- u2 %>% filter(!state_name %in% c("HAWAII"))
+```
+
+```{r}
+ggplot(u2, aes(x = unemp_change, y = odincrease_apr20apr21)) +
+  geom_point() +
+  geom_smooth() +
+  labs(title = "Unemployment growth vs 12 month OD increase")
+
+plot_ly(data = u2,
+        x = ~unemp_change,
+        y = ~odincrease_apr20apr21,
+        type = "scatter",
+        text = ~state_name
+        )
 ```
 
 
