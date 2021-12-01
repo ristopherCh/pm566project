@@ -245,13 +245,13 @@ cdpp <- ggplot(covid, aes(x = date, y = death_perc, color = state_name)) +
 
 ### Some more tabs 3 {.tabset}
 
-#### Tab 1
+#### COVID-19 cases
 
 ```{r}
 ggplotly(ccpp)
 ```
 
-#### Tab 2
+#### COVID-19 deaths
 
 ```{r}
 ggplotly(cdpp)
@@ -266,7 +266,7 @@ covid_max <- covid_max[order(-death_perc)]
 ```
 
 
-The state with the highest number deaths per population, `r covid_max[1,7]`, experienced per population mortality rates `r format(round(covid_max[1,10] * 100 / covid_max[nrow(covid_max),10]), 3)`% higher than that of the lowest number of deaths per population, `r covid_max[nrow(covid_max),7]`.
+The state with the highest number deaths per population, `r covid_max[1,7]`, has experienced per population mortality rates `r format(round(covid_max[1,10] * 100 / covid_max[nrow(covid_max),10]), 3)`% higher than that of the lowest number of deaths per population, `r covid_max[nrow(covid_max),7]`.
 
 These differences are a result of a complicated web of interconnected variables: geography, viral transmission tendencies, the extent to which the state and local governments enforced lockdown measures, the culture of the communities and how rigorously they practiced social distancing, the types of economies typical of each region, and many more.
 
@@ -371,7 +371,7 @@ ggplotly(gdu) %>%
 ```{r drugs_usa_2_3}
 indicators = unique(drugs$indicator)
 indicators2 <- c(indicators[3], indicators[6], indicators[7], indicators[8], indicators[9], indicators[11])
-indicators3 <- c(indicators[2], indicators[7], indicators[3])
+indicators3 <- c(indicators[2], indicators[9], indicators[3])
 
 drugs_usa2 <- drugs_usa[indicator %in% indicators2]
 drugs_usa3 <- drugs_usa[indicator %in% indicators3]
@@ -458,11 +458,11 @@ The reasons why states have historically experienced the drug overdose epidemic 
 
 Two different questions are asked below:
 
-Whether statewide COVID-19 *deaths* per capita is correlated with *non-normalized deaths due to overdose* per capita
+Whether statewide COVID-19 *deaths* per capita is correlated with the *percentage increase (over subsequent 12 month periods) in deaths due to overdose* per capita
 
 AND
 
-Whether statewide COVID-19 *cases* per capita is correlated with the *percentage increase (over subsequent 12 month periods) in deaths due to overdose* per capita. 
+Whether statewide COVID-19 *cases* per capita is correlated with *non-normalized deaths due to overdose* per capita. 
 
 ```{r percent-increase-drugs-by-state}
 od_min <- od_deaths[ , .SD[which.min(date)], by = state_name] #2015-01-01
@@ -556,14 +556,13 @@ plot_geo() %>%
   layout(geo = g)
 ```
 
+The maps highlight a few areas (the southeastern US) where COVID-19 and deaths due to overdose seem to correlate, as well as contrasting areas (the northern midwest and great plains states, the New England area) where they seem inversely related.
 
 The scatter plots indicate that there is either no relation between the two factors, or there is even a negative correlation.
 
-The maps highlight a few areas (the southeastern US) where COVID-19 and deaths due to overdose seem to correlate, as well as contrasting areas (the northern midwest and great plains states)
+While an inverse relationship between these factors may seem counterintuitive, COVID-19 affected the US in more ways than just the mortalities from the virus itself. The economic shutdown and enforced social distancing changed the way we live our entire lives, and these are the types of disruptions that could lead to increased drug usage: social isolation, joblessness, and the associated mental health effects. One conjecture which might explain the lack of correlation displayed above is that those states which experienced the lowest COVID-19 mortalities endured the most severe lockdowns - resulting in lower virus associated deaths but higher social isolation and a more damaged economy. 
 
-While this may seem counterintuitive, COVID-19 affected the US in more ways than just the mortalities from the virus itself. The economic shutdown and enforced social distancing changed the way we live our entire lives, and these are the types of disruptions that could lead to increased drug usage: social isolation, joblessness, and the associated mental health effects. One conjecture which might explain the lack of correlation seen above is that those states which experienced the lowest COVID-19 mortalities endured the most severe lockdowns - resulting in lower virus associated deaths but higher social isolation and a more damaged economy. 
-
-To investigate this possibility, monthly unemployment data in the 50 US states is shown:
+To investigate this possibility, monthly unemployment data in the 50 US states is considered:
 
 ```{r unemployment_fread}
 # https://www.bls.gov/lau/data.htm
@@ -589,7 +588,7 @@ unem <- ggplot(unemployment_plot, aes(x = date, y = value, color = STATE)) +
 ggplotly(unem)
 ```
 
-The upward lurch in unemployment numbers displayed above suggests a devastating disruption in the lives of those experiencing unemployment, and the entire US society. This visualization also shows that some states experienced economic shutdown unemployment far worse than others - Hawaii and Nevada, for example, where tourism makes up a large sector of the economy.
+The upward jolt in unemployment numbers displayed above describes a devastating disruption in the US economy and the lives of those experiencing unemployment. This visualization also demonstrates that some states experienced economic shutdown unemployment far worse than others - Hawaii and Nevada, for example, where tourism makes up a large sector of the economy.
 
 To examine the possibility that the unemployment experienced as a result of the COVID-19 lockdowns led to increased drug usage and deaths by overdose, below is a visualization of the relationship between these factors: The relative increase in the percent of the total state population that died due to drug overdose in the 12 months ending in April 2020 vs April 2021, compared to the increase in the percent of the state population experiencing unemployment from February 2020, before the pandemic, to October 2020, when unemployment began to receed in most states.
 
@@ -601,13 +600,8 @@ umin <- unemployment %>% filter(date == "2020-02-01") #invariable, 02 or 03
 unemployment_change <- select(umin, c("STATE"))
 unemployment_change$unemp_change <- umax$value - umin$value
 unemployment_change$umax_value <- umax$value
-#unemployment_change$unemp_change <- (umax$value - umin$value) / umin$value
-
-u0401 <- filter(unemployment, date == "2020-05-01")
-unemployment_change$unemp_static <- u0401$value
 
 covid_od_unemp <- merge(covid_od, unemployment_change, by.x = "state_name", by.y = "STATE")
-#covid_od_unemp <- covid_od_unemp %>% filter(!state_name %in% c("HAWAII", "NEVADA", "COLORADO", "NEW YORK", "VIRGINIA", "NORTH DAKOTA", "CALIFORNIA", "ILLINOIS", "MICHIGAN", "OREGON", "ALABAMA", "MASSACHUSETTS", "NEW JERSEY", "CONNECTICUT"))
 covid_od_unemp <- covid_od_unemp %>% filter(!state_name %in% c("HAWAII"))
 ```
 
@@ -618,8 +612,6 @@ u5 <- ggplot(covid_od_unemp, aes(x = umax_value, y = odpop_perc, label = state_n
   labs(title = "Unemployment vs OD deaths", x = "Unemployment %, October 2020", y = "OD deaths by % of state population, April 2020 - April 2021")
 
 ggplotly(u5, tooltip = c("label"))
-
-#
 
 u4 <- ggplot(covid_od_unemp, aes(x = unemp_change, y = odpop_perc, label = state_name)) +
   geom_point() +
