@@ -559,11 +559,11 @@ plot_geo() %>%
 
 The scatter plots indicate that there is either no relation between the two factors, or there is even a negative correlation.
 
-The maps highlight a few areas (the southeastern US) where COVID-19 and deaths due to overdose seem to correlate, as well as contrasting areas (the northern midwest and great plains states)
+The maps highlight a few areas (the southeastern US) where COVID-19 and deaths due to overdose seem to correlate, as well as others areas (the northern midwest and great plains states) where they certainly don't.
 
 While this may seem counterintuitive, COVID-19 affected the US in more ways than just the mortalities from the virus itself. The economic shutdown and enforced social distancing changed the way we live our entire lives, and these are the types of disruptions that could lead to increased drug usage: social isolation, joblessness, and the associated mental health effects. One conjecture which might explain the lack of correlation seen above is that those states which experienced the lowest COVID-19 mortalities endured the most severe lockdowns - resulting in lower virus associated deaths but higher social isolation and a more damaged economy. 
 
-To investigate this possibility, monthly unemployment data in the 50 US states is shown:
+To investigate this possibility, another dataset will be introduced into this analysis: monthly unemployment data in the 50 US states.
 
 ```{r unemployment_fread}
 # https://www.bls.gov/lau/data.htm
@@ -589,11 +589,11 @@ unem <- ggplot(unemployment_plot, aes(x = date, y = value, color = STATE)) +
 ggplotly(unem)
 ```
 
-The upward lurch in unemployment numbers displayed above suggests a devastating disruption in the lives of those experiencing unemployment, and the entire US society. This visualization also shows that some states experienced economic shutdown unemployment far worse than others - Hawaii and Nevada, for example, where tourism makes up a large sector of the economy.
+Upon realization of the severity of the pandemic spreading throughout the country, a series of business shutdowns were enforced at each of the county, state, and federal levels. Due to this patchwork approach to shutdown laws as well as the unique nature of the economies of each state, there was marked difference between the way each state experienced unemployment and financial downturn. Hawaii and Nevada stand out in particular, as tourism makes up a large sector of their economies.
 
-To examine the possibility that the unemployment experienced as a result of the COVID-19 lockdowns led to increased drug usage and deaths by overdose, below is a visualization of the relationship between these factors: The relative increase in the percent of the total state population that died due to drug overdose in the 12 months ending in April 2020 vs April 2021, compared to the increase in the percent of the state population experiencing unemployment from February 2020, before the pandemic, to October 2020, when unemployment began to receed in most states.
+To examine the possibility that the unemployment experienced as a result of the COVID-19 lockdowns led to increased drug usage and deaths by overdose, below is a visualization of the relationship between these factors: The *relative increase in the percent of the total state population that died due to drug overdose in the 12 months ending in April 2020 vs April 2021*, compared to the *increase in the percent of the state population experiencing unemployment from February 2020, before the pandemic, to October 2020,* when unemployment began to recede in most states.
 
-(Hawaii is removed from these analyses as its economy is unusually reliant on tourism and because it is geographically isolated from the mainland drug trade routes, making it an outlier.)
+(Hawaii is removed from these analyses as its economy is unusually reliant on tourism and because it's geographically isolated from the mainland drug trade routes, making it an outlier.)
 
 ```{r unemployment_cleanup}
 umax <- unemployment %>% filter(date == "2020-10-01") #vary this, 10 is good
@@ -617,16 +617,12 @@ u5 <- ggplot(covid_od_unemp, aes(x = umax_value, y = odpop_perc, label = state_n
   geom_smooth() +
   labs(title = "Unemployment vs OD deaths", x = "Unemployment %, October 2020", y = "OD deaths by % of state population, April 2020 - April 2021")
 
-ggplotly(u5, tooltip = c("label"))
-
 #
 
 u4 <- ggplot(covid_od_unemp, aes(x = unemp_change, y = odpop_perc, label = state_name)) +
   geom_point() +
   geom_smooth() +
   labs(title = "Increase in unemployment vs OD deaths", x = "Relative increase in unemployment, April 2020 - October 2020", y = "OD deaths by % of state population, April 2020 - April 2021")
-
-ggplotly(u4, tooltip = c("label"))
 
 # plot_ly(data = covid_od_unemp,
 #         x = ~unemp_change,
@@ -642,8 +638,6 @@ u3 <- ggplot(covid_od_unemp, aes(x = unemp_change, y = odincrease_apr20apr21, la
   geom_smooth() +
   labs(title = "Unemployment growth vs 12 month OD increase", x = "Relative increase in unemployment, April 2020 - October 2020", y = "% increase in OD deaths from 04/2019 - 04/2020 vs 04/2020 - 04/2021")
 
-ggplotly(u3, tooltip = c("label"))
-
 # plot_ly(data = covid_od_unemp,
 #         x = ~unemp_change,
 #         y = ~odincrease_apr20apr21,
@@ -653,6 +647,30 @@ ggplotly(u3, tooltip = c("label"))
 
 
 ```
+
+### Some more graphs # 1000 {.tabset}
+
+#### Tab 1
+
+```{r}
+ggplotly(u5, tooltip = c("label"))
+```
+
+#### Tab 1
+
+```{r}
+ggplotly(u4, tooltip = c("label"))
+```
+
+#### Tab 1
+
+```{r}
+ggplotly(u3, tooltip = c("label"))
+```
+
+### {-}
+
+The above tabs can be explained 
 
 Another way to measure the economic health of a community is to consider the change in state GDP in the period following the COVID lockdown. 
 
