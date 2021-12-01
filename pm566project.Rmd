@@ -187,45 +187,44 @@ p4 <- ggplot(covid_usa, aes(x = date, y = death_perc)) +
   xlab("Date") + ylab("Total percent of US population killed by COVID-19")
 ```
 
-## Some Temporary Plots {.tabset}
+### Some Temporary Plots {.tabset}
 
-### Tab 1
+#### Tab 1
 
-```{r echo=FALSE}
+```{r}
 p1
 ```
 
-### Tab 2
+#### Tab 2
 
-```{r echo=FALSE}
+```{r}
 p2
 ```
 
-### Tab 3
+#### Tab 3
 
-```{r echo=FALSE}
+```{r}
 p3
 ```
 
-### Tab 4
+#### Tab 4
 
-```{r echo=FALSE}
+```{r}
 p4
 ```
 
-{-}
+### {-}
 
 There has been considerable difference between how each of the US States has experienced COVID-19:
 
 ```{r covid_graph_by_state}
-# Ploting covid deaths by population percent----------------------------------
+
+# Plotting covid deaths by population percent----------------------------------
 ccpp <- ggplot(covid, aes(x = date, y = case_perc, color = state_name)) +
   geom_line() +
   labs(title = "COVID-19 cases by % of state population", subtitle = "Source: data.cdc.gov API") +
   xlab("Date") + ylab("COVID-19 cases by % of state population") +
   theme(legend.title = element_text(size = 5), legend.text = element_text(size = 5))
-
-ggplotly(ccpp)
 
 #ggplot(covid, aes(x = date, y = newcase_perc, color = state_name)) +
 #  geom_line(show.legend = FALSE) +
@@ -237,13 +236,29 @@ cdpp <- ggplot(covid, aes(x = date, y = death_perc, color = state_name)) +
   labs(title = "COVID-19 deaths by % of state population", subtitle = "Source: data.cdc.gov API")+
   xlab("Date") + ylab("COVID-19 deaths by % of state population")
 
-ggplotly(cdpp)
-
 #ggplot(covid, aes(x = date, y = newdeath_perc, color = state_name)) +
 #  geom_line(show.legend = FALSE) +
 #  labs(title = "New COVID-19 deaths by % of state population")+
 #  xlab("Date") + ylab("Daily COVID-19 deaths") 
+
 ```
+
+### Some more tabs 3 {.tabset}
+
+#### Tab 1
+
+```{r}
+ggplotly(ccpp)
+```
+
+#### Tab 2
+
+```{r}
+ggplotly(cdpp)
+```
+
+### {-}
+
 
 ```{r covid_max}
 covid_max <- covid[ , .SD[which.max(date)], by = state]
@@ -273,9 +288,9 @@ drugs_content <- content(drugsquery)
 drugs <- rbindlist(drugs_content[1:length(drugs_content)], fill=TRUE)
 drugs$state_name = toupper(drugs$state_name)
 ```
-
-```{r drugs-processing}
-# Cleaning up the drugs data.table----------------------------------------------
+ 
+```{r drugs-processing2}
+# Cleaning up the drugs data.table
 
 drugs$date <- as.Date(paste0(drugs$year, drugs$month, "01"), format="%Y%B%d")
 setnames(drugs, "data_value", "deaths")
@@ -438,21 +453,21 @@ allodpop <- ggplot(od_deaths, aes(x = date, y = odpop_perc, color = state_name))
 
 ```
 
-## Overdose deaths, by state {.tabset}
+### Some Temporary Plots #2 {.tabset}
 
-### Tab 1
+#### Tab 1
 
-```{r echo=FALSE}
+```{r}
 ggplotly(allod)
 ```
 
-### Tab 2
+#### Tab 2
 
-```{r echo=FALSE}
+```{r}
 ggplotly(allodpop)
 ```
 
-{-}
+### {-}
 
 The reasons why states have historically experienced the drug overdose epidemic so differently are numerous and complicated. This analysis is an effort to strip away these variations and determine if there is a relationship with the COVID-19 pandemic.
 
@@ -470,15 +485,15 @@ od_realmax <- od_deaths[ , .SD[which.max(date)], by = state_name]
 od_max <- od_deaths[date == "2021-04-01"] #Let's just keep this here
 od_0420 <- od_deaths[date == "2020-04-01"]
 
-# Percent increase from min date to max date (all available data)-----------------------
+# Percent increase from min date to max date (all available data)
 #od_max$total_odincrease <- (od_max$deaths - od_min$deaths) * 100 / od_min$deaths #not relevant
 
-# Percent increase from March 2020 to March 2021----------------------------------------
+# Percent increase from March 2020 to March 2021
 od_max$odincrease_apr20apr21 <- (od_max$deaths - od_0420$deaths) * 100 / od_0420$deaths
 ```
 
 ```{r covid-vs-drugs plots}
-# Plots of covid vs relative drug deaths----------------------------------
+# Plots of covid vs relative drug deaths
 
 # Used below
 covid_0421 <- covid[date == "2021-04-01"] # Changed for fun
@@ -515,21 +530,15 @@ od_cov2 <- ggplot(covid_od, aes(x = case_perc, y = odpop_perc)) +
 #         )
 ```
 
-## Overdose deaths vs COVID-19 {.tabset}
-
-### Tab 1
 
 ```{r echo=FALSE}
 ggplotly(od_cov1)
 ```
 
-### Tab 2
-
 ```{r echo=FALSE}
 ggplotly(od_cov2)
 ```
 
-{-}
 
 A visualization of the geographical distribution of these factors may uncover some regional trends:
 
@@ -541,11 +550,8 @@ g <- list(
 )
 ```
 
-## Geographical distributions {.tabset}
 
-### Tab 1
-
-```{r echo=FALSE}
+```{r}
 # Covid death as a percentage of state population, most recent available data
 plot_geo() %>%
   add_trace(
@@ -555,9 +561,8 @@ plot_geo() %>%
   layout(geo = g)
 ```
 
-### Tab 2
 
-```{r echo=FALSE}
+```{r}
 # OD deaths as a percentage of state population since COVID began
 plot_geo() %>%
   add_trace(
@@ -567,7 +572,6 @@ plot_geo() %>%
   layout(geo = g)
 ```
 
-{-}
 
 The scatter plots indicate that there is either no relation between the two factors, or there is even a negative correlation.
 
@@ -578,7 +582,7 @@ To investigate this possibility, monthly unemployment data in the 50 US states i
 ```{r unemployment_fread}
 # https://www.bls.gov/lau/data.htm
 
-unemployment <- fread("stateunemployment.csv")
+unemployment <- fread("data/stateunemployment.csv")
 unemployment <- head(unemployment, -3)
 unemployment <- melt(unemployment, id.vars="STATE", variable.name = "date")
 
@@ -622,14 +626,14 @@ covid_od_unemp <- covid_od_unemp %>% filter(!state_name %in% c("HAWAII"))
 ```
 
 ```{r}
-u5 <- ggplot(covid_od_unemp, aes(x = umax_value, y = odpop_perc, label = state_name)) +
+u5 <- ggplot(covid_od_unemp, aes(x = umax_value, y = odpop_perc, label = state_name, color = death_perc)) +
   geom_point() +
   geom_smooth() +
   labs(title = "Unemployment vs OD deaths", x = "Unemployment %, October 2020", y = "OD deaths by % of state population, April 2020 - April 2021")
 
 ggplotly(u5, tooltip = c("label"))
 
-# ------------------------------------------------------------------------------
+#
 
 u4 <- ggplot(covid_od_unemp, aes(x = unemp_change, y = odpop_perc, label = state_name)) +
   geom_point() +
@@ -645,7 +649,7 @@ ggplotly(u4, tooltip = c("label"))
 #         text = ~state_name
 #         )
 
-# ------------------------------------------------------------------------------
+#
 
 u3 <- ggplot(covid_od_unemp, aes(x = unemp_change, y = odincrease_apr20apr21, label = state_name)) +
   geom_point() +
@@ -721,6 +725,7 @@ ggecon_rel <- ggplot(econ_relative, aes(x = TimePeriod.x, y = relative, color = 
 ggplotly(ggecon_rel)
 ```
 
+Here's some more words to be confused about.
 
 ```{r econ_plots}
 q1 <- econ %>% filter(TimePeriod == "2020-04-01") #low value, post-covid
@@ -743,14 +748,14 @@ covid_od_econ <- covid_od_econ %>% filter(!state_name %in% c("HAWAII", "ALASKA")
 #         text = ~state_name
 #         )
 
-w1 <- ggplot(covid_od_econ, aes(x = econdrop, y = odincrease_apr20apr21, label = state_name)) +
+w1 <- ggplot(covid_od_econ, aes(x = econdrop, y = odincrease_apr20apr21, label = state_name, color = case_perc)) +
   geom_point() +
   geom_smooth() +
   labs(title = "Economic recession vs 12 month OD increase")
 
 ggplotly(w1, tooltip = c("label"))
 
-#-------------------------------------------------------------------------------
+#
 
 # plot_ly(data = covid_od_econ,
 #         x = ~econdrop,
@@ -765,7 +770,6 @@ ggplotly(w1, tooltip = c("label"))
 #   labs(title = "Economic recession vs 12 month OD deaths per population")
 # 
 # ggplotly(w2)
-
 
 ```
 
