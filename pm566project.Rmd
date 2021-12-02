@@ -556,15 +556,15 @@ plot_geo() %>%
   layout(geo = g)
 ```
 
-The maps highlight a few areas (the southeastern US) where COVID-19 and deaths due to overdose seem to correlate, as well as contrasting areas (the northern midwest and great plains states, the New England area) where they seem inversely related.
+The maps highlight a few areas (the southeastern US) where COVID-19 and deaths due to overdose seem to correlate, as well as contrasting areas (the northern midwest, the New England area) where they seem inversely related.
 
 The scatter plots indicate that there is either no relation between the two factors, or there is even a negative correlation.
-
-The maps highlight a few areas (the southeastern US) where COVID-19 and deaths due to overdose seem to correlate, as well as others areas (the northern midwest and great plains states) where they certainly don't.
 
 While this may seem counterintuitive, COVID-19 affected the US in more ways than just the mortalities from the virus itself. The economic shutdown and enforced social distancing changed the way we live our entire lives, and these are the types of disruptions that could lead to increased drug usage: social isolation, joblessness, and the associated mental health effects. One conjecture which might explain the lack of correlation seen above is that those states which experienced the lowest COVID-19 mortalities endured the most severe lockdowns - resulting in lower virus associated deaths but higher social isolation and a more damaged economy.
 
 To investigate this possibility, another dataset will be introduced into this analysis: monthly unemployment data in the 50 US states.
+
+### COVID-19 induced unemployment vs deaths by overdose
 
 ```{r unemployment_fread}
 # https://www.bls.gov/lau/data.htm
@@ -613,8 +613,6 @@ u5 <- ggplot(covid_od_unemp, aes(x = umax_value, y = odpop_perc, label = state_n
   geom_smooth() +
   labs(title = "Unemployment vs OD deaths", x = "Unemployment %, October 2020", y = "OD deaths by % of state population, April 2020 - April 2021")
 
-ggplotly(u5, tooltip = c("label"))
-
 u4 <- ggplot(covid_od_unemp, aes(x = unemp_change, y = odpop_perc, label = state_name)) +
   geom_point() +
   geom_smooth() +
@@ -652,13 +650,13 @@ u3 <- ggplot(covid_od_unemp, aes(x = unemp_change, y = odincrease_apr20apr21, la
 ggplotly(u5, tooltip = c("label"))
 ```
 
-#### Tab 1
+#### Tab 2
 
 ```{r}
 ggplotly(u4, tooltip = c("label"))
 ```
 
-#### Tab 1
+#### Tab 3
 
 ```{r}
 ggplotly(u3, tooltip = c("label"))
@@ -666,7 +664,15 @@ ggplotly(u3, tooltip = c("label"))
 
 ### {-}
 
-The above tabs can be explained
+The above tabs show a sequence of similar scatterplots, with each subsequent plot eliminating a confounding variable.
+
+**Tab 1** shows raw unemployment numbers compared to raw deaths due to overdose per state, without considering prior unemployment values. Even without the influence of COVID-19, a relationship between these variables is to be expected, and indeed a positive relationship appears to exist.
+
+**Tab 2** shows the same data, but with unemployment normalized against pre COVID-19 levels. The relationship still appears positively correlated, but with greater variance.
+
+**Tab 3** also uses normalized unemployment values, but also considers the percentage increase in drug overdoses per capita for the 12 month period coinciding with COVID-19, compared to the 12 month period immediately prior. By eliminating another confounding factor, an even more accurate picture of the relationship between COVID-19 induced unemployment and drug overdose deaths is shown. A positive correlation is suggested, but is far from certain.
+
+### COVID-19 induced economic slowdown vs deaths by overdose
 
 Another way to measure the economic health of a community is to consider the change in state GDP in the period following the COVID lockdown.
 
@@ -702,7 +708,7 @@ setnames(econ_min, "DataValue", "relative_value")
 
 econ_relative <- merge(econ, econ_min, by = "GeoName")
 econ_relative$relative <- econ_relative$DataValue / econ_relative$`relative_value`
-econ_relative <- filter(econ_relative, TimePeriod.x >= "2019-07-01")
+#econ_relative <- filter(econ_relative, TimePeriod.x >= "2019-07-01")
 econ_relative <- econ_relative[order(GeoName, TimePeriod.x)]
 
 ```
@@ -711,21 +717,33 @@ econ_relative <- econ_relative[order(GeoName, TimePeriod.x)]
 ggecon <- ggplot(econ, aes(x = TimePeriod, y = DataValue, color = GeoName)) +
   geom_point() +
   labs(title = "Quarterly state GDP", x = "Date", y = "Millions of chained 2012 dollars", subtitle = "Source: US Bureau of Economic Analysis API")
-ggplotly(ggecon)
 ```
-
-A more telling way of visualizing this data is to normalize these values, so that the relative change in the state GDP immediately after the shutdown becomes more evident:
-
-(This data is provided quarterly, and the shutdown occurred part way through the 1st quarter of 2020, which is represented by the point at 2020-01-01.)
 
 ```{r econ_investigation}
 ggecon_rel <- ggplot(econ_relative, aes(x = TimePeriod.x, y = relative, color = GeoName)) +
   geom_point() +
   labs(title = "Quarterly state GDP, relative to 4th quarter 2019", x = "Date", y = "Relative change", subtitle = "Source: US Bureau of Economic Analysis API")
-ggplotly(ggecon_rel)
 ```
 
-Here's some more words to be confused about.
+### Economic slowdown due to COVID-19 {.tabset}
+
+#### Tab 1
+
+```{r}
+ggplotly(ggecon)
+```
+
+#### Tab 2
+
+```{r}
+ggplotly(ggecon_rel)
+```
+### {-}
+
+**Tab 1** above shows raw quarterly GDP values (in millions of chained 2012 dollars) per state. However, a more telling way of visualizing this data is to normalize these values, so that the relative change in the state GDP immediately after the shutdown becomes more evident, as seen in **Tab 2**.
+
+(This data is provided quarterly, and the shutdown occurred part way through the 1st quarter of 2020, which is represented by the point at 2020-01-01.)
+
 
 ```{r econ_plots}
 q1 <- econ %>% filter(TimePeriod == "2020-04-01") #low value, post-covid
