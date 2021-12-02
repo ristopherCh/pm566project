@@ -98,9 +98,7 @@ census <- merge(census, abtable2)
 #census$population <- as.numeric(census$population)
 ```
 
-## Preliminary Results
-
-A timeline:
+## The COVID-19 pandemic in the US
 
 COVID-19 was first detected in the USA on January 17, 2020, in Washington State. By March 13, 2020, President Trump had declared a nationwide emergency, and 2 days later, schools and restaurants began to shut down. By May 9th, 2020, the unemployment rate hit 14.7%, the worst rate since the Great Depression. By September 2020, the US COVID-19 death toll surpassed 200,000, and by January 18, 2021, it had doubled to 400,000. On December 14th, 2020, the initial phase of the vaccination program began, and by March 13, 2021, the US had surpassed 100 million vaccinations administered. By July 1st, 2021, the delta variant had become detected in all 50 US States.
 
@@ -163,57 +161,51 @@ ggplot(covid_usa, aes(x = date, y = new_case)) +
   xlab("Date") + ylab("New COVID-19 cases")
 ```
 
-This timeline helps provide a framework for interpreting the following simple plots:
+
 
 ```{r covid_basic_plots}
-p1 <- ggplot(covid_usa, aes(x = date, y = case_perc)) +
-  geom_line(color = "red", size = 1) +
-  labs(title = "Total US COVID-19 cases by % of US population", subtitle = "Source: data.cdc.gov API")  +
-  xlab("Date") + ylab("Total percent of US population infected with COVID-19")
-
-p2 <- ggplot(covid_usa, aes(x = date, y = new_death)) +
-  geom_line() +
-  labs(title = "New US COVID-19 deaths per day", subtitle = "Source: data.cdc.gov API") +
-  xlab("Date") + ylab("Daily COVID-19 deaths")
-
-p3 <- ggplot(covid_usa, aes(x = date, y = tot_death)) +
- geom_line() +
- labs(title = "Total US COVID-19 deaths") +
- xlab("Date") + ylab("COVID-19 deaths")
-
-p4 <- ggplot(covid_usa, aes(x = date, y = death_perc)) +
-  geom_line(color = "blue", size = 1) +
-  labs(title = "Total US COVID-19 deaths by % of US population", subtitle = "Source: data.cdc.gov API") +
-  xlab("Date") + ylab("Total percent of US population killed by COVID-19")
+# p1 <- ggplot(covid_usa, aes(x = date, y = case_perc)) +
+#   geom_line(color = "red", size = 1) +
+#   labs(title = "Total US COVID-19 cases by % of US population", subtitle = "Source: data.cdc.gov API")  +
+#   xlab("Date") + ylab("Total percent of US population infected with COVID-19")
+# 
+# p2 <- ggplot(covid_usa, aes(x = date, y = new_death)) +
+#   geom_line() +
+#   labs(title = "New US COVID-19 deaths per day", subtitle = "Source: data.cdc.gov API") +
+#   xlab("Date") + ylab("Daily COVID-19 deaths")
+# 
+# p3 <- ggplot(covid_usa, aes(x = date, y = tot_death)) +
+#  geom_line() +
+#  labs(title = "Total US COVID-19 deaths") +
+#  xlab("Date") + ylab("COVID-19 deaths")
+# 
+# p4 <- ggplot(covid_usa, aes(x = date, y = death_perc)) +
+#   geom_line(color = "blue", size = 1) +
+#   labs(title = "Total US COVID-19 deaths by % of US population", subtitle = "Source: data.cdc.gov API") +
+#   xlab("Date") + ylab("Total percent of US population killed by COVID-19")
 ```
 
-### Some Temporary Plots {.tabset}
 
-#### Tab 1
 
 ```{r}
-p1
+# p1
 ```
 
-#### Tab 2
 
 ```{r}
-p2
+# p2
 ```
 
-#### Tab 3
 
 ```{r}
-p3
+# p3
 ```
 
-#### Tab 4
 
 ```{r}
-p4
+# p4
 ```
 
-### {-}
 
 There has been considerable difference between how each of the US States has experienced COVID-19:
 
@@ -243,7 +235,7 @@ cdpp <- ggplot(covid, aes(x = date, y = death_perc, color = state_name)) +
 
 ```
 
-### Some more tabs 3 {.tabset}
+### COVID-19 per state {.tabset}
 
 #### COVID-19 cases
 
@@ -356,15 +348,10 @@ drugs_usa <- drugs_usa[!indicator %in% c("Number of Deaths", "Natural, semi-synt
 gdu <- ggplot(drugs_usa, aes(x = date, y = deaths, color = indicator)) +
   geom_line(size = 1) +
   theme(legend.title = element_text(size = 8), legend.text = element_text(size = 7)) +
-  labs(x = "Date", y = "12 month rolling sum of deaths from OD") +
+  labs(x = "Date", y = "12 month rolling sum of deaths from OD", title = "Total US OD deaths from significant drug categories, 2015-2021") +
   scale_x_date(date_breaks = "year",  date_labels = "%Y")
 
-ggplotly(gdu) %>%
-  layout(title = list(text = paste0("Total US OD deaths from significant drug categories, 2015-2021",
-                                    '<br>',
-                                    '<sup>',
-                                    "Source: data.cdc.gov API",
-                                    '</sup>')))
+ggplotly(gdu)
 ```
 
 
@@ -450,7 +437,7 @@ allodpop <- ggplot(od_deaths, aes(x = date, y = odpop_perc, color = state_name))
 
 ```
 
-```{r}
+```{r plot_odstates}
 ggplotly(allodpop)
 ```
 
@@ -516,11 +503,11 @@ od_cov2 <- ggplot(covid_od, aes(x = case_perc, y = odpop_perc)) +
 ```
 
 
-```{r}
+```{r plot_covidvsod}
 ggplotly(od_cov1)
 ```
 
-```{r}
+```{r plot_covidvsod2}
 ggplotly(od_cov2)
 ```
 
@@ -535,25 +522,27 @@ g <- list(
 ```
 
 
-```{r}
+```{r map_covid}
 # Covid death as a percentage of state population, most recent available data
 plot_geo() %>%
   add_trace(
     z = ~covid_od$death_perc, text = covid_od$state_name, span = I(0),
     locations = covid_od$state, locationmode = 'USA-states'
   ) %>%
-  layout(geo = g)
+  layout(geo = g) %>%
+  colorbar(title = "COVID-19 \nassociated deaths \n(% of pop)")
 ```
 
 
-```{r}
+```{r map_ods}
 # OD deaths as a percentage of state population since COVID began
 plot_geo() %>%
   add_trace(
     z = ~covid_od$odincrease_apr20apr21, text = covid_od$state_name, span = I(0),
     locations = covid_od$state, locationmode = 'USA-states'
   ) %>%
-  layout(geo = g)
+  layout(geo = g) %>%
+  colorbar(title = "% increase in\nOD associated deaths,\n2019 to 2020")
 ```
 
 The maps highlight a few areas (the southeastern US) where COVID-19 and deaths due to overdose seem to correlate, as well as contrasting areas (the northern midwest, the New England area) where they seem inversely related.
@@ -607,7 +596,7 @@ covid_od_unemp <- merge(covid_od, unemployment_change, by.x = "state_name", by.y
 covid_od_unemp <- covid_od_unemp %>% filter(!state_name %in% c("HAWAII"))
 ```
 
-```{r}
+```{r plots_unempod}
 u5 <- ggplot(covid_od_unemp, aes(x = umax_value, y = odpop_perc, label = state_name, color = death_perc)) +
   geom_point() +
   geom_smooth() +
@@ -646,19 +635,19 @@ u3 <- ggplot(covid_od_unemp, aes(x = unemp_change, y = odincrease_apr20apr21, la
 
 #### Tab 1
 
-```{r}
+```{r plot_umpod1}
 ggplotly(u5, tooltip = c("label"))
 ```
 
 #### Tab 2
 
-```{r}
+```{r plot_unempod2}
 ggplotly(u4, tooltip = c("label"))
 ```
 
 #### Tab 3
 
-```{r}
+```{r plot_umpod3}
 ggplotly(u3, tooltip = c("label"))
 ```
 
@@ -713,13 +702,11 @@ econ_relative <- econ_relative[order(GeoName, TimePeriod.x)]
 
 ```
 
-```{r}
+```{r econ_plot}
 ggecon <- ggplot(econ, aes(x = TimePeriod, y = DataValue, color = GeoName)) +
   geom_point() +
   labs(title = "Quarterly state GDP", x = "Date", y = "State GDP (millions of chained 2012 dollars)", subtitle = "Source: US Bureau of Economic Analysis API")
-```
 
-```{r econ_investigation}
 ggecon_rel <- ggplot(econ_relative, aes(x = TimePeriod.x, y = relative, color = GeoName)) +
   geom_point() +
   labs(title = "Quarterly state GDP, relative to 4th quarter 2019", x = "Date", y = "State GDP (relative to 4th qtr 2019)", subtitle = "Source: US Bureau of Economic Analysis API")
@@ -729,13 +716,13 @@ ggecon_rel <- ggplot(econ_relative, aes(x = TimePeriod.x, y = relative, color = 
 
 #### Tab 1
 
-```{r}
+```{r plot_econ1}
 ggplotly(ggecon)
 ```
 
 #### Tab 2
 
-```{r}
+```{r plot_econ2}
 ggplotly(ggecon_rel)
 ```
 ### {-}
@@ -747,7 +734,7 @@ ggplotly(ggecon_rel)
 Finally, plotting this normalized percentage drop in GDP vs the normalized percentage increase in deaths due to overdose:
 
 
-```{r econ_plots}
+```{r econ_plot2}
 q1 <- econ %>% filter(TimePeriod == "2020-04-01") #low value, post-covid
 q2 <- econ %>% filter(TimePeriod == "2019-10-01") #high value, pre-covid
 q3 <- (1 - (q1$DataValue / q2$DataValue)) * 100 #total percentage drop in GDP
@@ -794,7 +781,7 @@ ggplotly(w1, tooltip = c("label"))
 
 While the data points are very disperse, and it's unclear whether any conclusions should be drawn from this relationship, a positive correlation does appear to exist between the variables. 
 
-## Conclusion
+## Conclusion and Summary
 Fiddlesticks.
 
 
@@ -802,6 +789,8 @@ Fiddlesticks.
 Data regarding the population of the US and its States was collected from the census.gov’s API portal. It was converted to a data.table by the methods instructed in lecture, and associated with other data.tables using the data.table merge method.
 The COVID-19 data was accessed via the data.cdc.gov API portal. It was merged with census data to calculate COVID-19 infections and deaths as a percentage of the state population.
 Data regarding drug overdoses in the USA was also accessed through the data.cdc.gov API. It was merged with the census data to be able to calculate overdose percentages by state population. Later, it was merged with the COVID-19 data to investigate the relationship between overdoses and COVID-19 infection rates.
+Data regarding unemployment was downloaded from the Bureau of Labor Statistics website.
+Data regarding GDP was received from the Bureau of Economic Analysis API.
 The data was very reliable, as it was thoroughly gathered by the CDC, and needed very little cleaning or wrangling. Data exploration was mainly done visually using ggplot2 line and scatterplots, most of which are shown in this report.
 
 
@@ -815,3 +804,7 @@ https://www.hhs.gov/opioids/about-the-epidemic/index.html
 https://www.cdc.gov/museum/timeline/covid19.html
 
 https://data.cdc.gov/NCHS/VSRR-Provisional-Drug-Overdose-Death-Counts/xkb8-kh2a
+
+https://apps.bea.gov/api/_pdf/bea_web_service_api_user_guide.pdf
+
+https://www.bls.gov/lau/data.htm
