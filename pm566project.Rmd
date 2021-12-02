@@ -716,13 +716,13 @@ econ_relative <- econ_relative[order(GeoName, TimePeriod.x)]
 ```{r}
 ggecon <- ggplot(econ, aes(x = TimePeriod, y = DataValue, color = GeoName)) +
   geom_point() +
-  labs(title = "Quarterly state GDP", x = "Date", y = "Millions of chained 2012 dollars", subtitle = "Source: US Bureau of Economic Analysis API")
+  labs(title = "Quarterly state GDP", x = "Date", y = "State GDP (millions of chained 2012 dollars)", subtitle = "Source: US Bureau of Economic Analysis API")
 ```
 
 ```{r econ_investigation}
 ggecon_rel <- ggplot(econ_relative, aes(x = TimePeriod.x, y = relative, color = GeoName)) +
   geom_point() +
-  labs(title = "Quarterly state GDP, relative to 4th quarter 2019", x = "Date", y = "Relative change", subtitle = "Source: US Bureau of Economic Analysis API")
+  labs(title = "Quarterly state GDP, relative to 4th quarter 2019", x = "Date", y = "State GDP (relative to 4th qtr 2019)", subtitle = "Source: US Bureau of Economic Analysis API")
 ```
 
 ### Economic slowdown due to COVID-19 {.tabset}
@@ -744,11 +744,13 @@ ggplotly(ggecon_rel)
 
 (This data is provided quarterly, and the shutdown occurred part way through the 1st quarter of 2020, which is represented by the point at 2020-01-01.)
 
+Finally, plotting this normalized percentage drop in GDP vs the normalized percentage increase in deaths due to overdose:
+
 
 ```{r econ_plots}
 q1 <- econ %>% filter(TimePeriod == "2020-04-01") #low value, post-covid
 q2 <- econ %>% filter(TimePeriod == "2019-10-01") #high value, pre-covid
-q3 <- 1 - (q1$DataValue / q2$DataValue) #total percentage drop in GDP
+q3 <- (1 - (q1$DataValue / q2$DataValue)) * 100 #total percentage drop in GDP
 
 
 
@@ -756,7 +758,6 @@ econ_drop <- econ %>% filter(TimePeriod == "2021-04-01")
 econ_drop$econdrop <- q3
 econ_drop <- select(econ_drop, c("GeoName", "econdrop"))
 covid_od_econ <- merge(covid_od, econ_drop, by.x = "state_name", by.y = "GeoName")
-#covid_od_econ <- covid_od_econ %>% filter(!state_name %in% c("ALASKA", "NEVADA", "WYOMING", "SOUTH DAKOTA", "HAWAII", "NEW HAMPSHIRE", "NEW JERSEY", "CONNECTICUT", "MONTANA"))
 covid_od_econ <- covid_od_econ %>% filter(!state_name %in% c("HAWAII", "ALASKA"))
 
 # plot_ly(data = covid_od_econ,
@@ -769,7 +770,7 @@ covid_od_econ <- covid_od_econ %>% filter(!state_name %in% c("HAWAII", "ALASKA")
 w1 <- ggplot(covid_od_econ, aes(x = econdrop, y = odincrease_apr20apr21, label = state_name, color = case_perc)) +
   geom_point() +
   geom_smooth() +
-  labs(title = "Economic recession vs 12 month OD increase")
+  labs(title = "Economic recession vs 12 month OD increase", x = "% drop in GDP, 4th qtr 2019 - 2nd qtr 2020", y = "% increase in OD deaths, 04/19-04/20 vs 04/20-04/21")
 
 ggplotly(w1, tooltip = c("label"))
 
@@ -791,8 +792,10 @@ ggplotly(w1, tooltip = c("label"))
 
 ```
 
+While the data points are very disperse, and it's unclear whether any conclusions should be drawn from this relationship, a positive correlation does appear to exist between the variables. 
+
 ## Conclusion
-Oh, whatever.
+Fiddlesticks.
 
 
 ## Methods
