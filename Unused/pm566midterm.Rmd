@@ -1,0 +1,142 @@
+---
+title: "PM-566 Midterm"
+author: "Chris Hanson"
+date: "10/16/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(httr)
+library(xml2)
+```
+
+From: 
+https://www.who.int/data/gho/info/gho-odata-api
+and
+https://uscbiostats.github.io/PM566/slides/07-apis-regex/slides.html#30
+
+
+Retrieving the list of available dimension codes
+```{r}
+dimquery <- GET(
+  url = "https://ghoapi.azureedge.net/api/Dimension/"
+)
+
+dimquery$status_code
+
+dimensions <- content(dimquery, "parsed")
+dimensions <- lapply(dimensions$value, function(a){
+  data.frame(
+  CODE    = a$Code,
+  TITLE   = a$Title
+  )
+})
+dimensions <- do.call(rbind, dimensions)
+head(dimensions)
+```
+
+Retrieving a list of available values for a specific dimension
+```{r}
+valuesquery <- GET(
+  url = "https://ghoapi.azureedge.net/api/DIMENSION/COUNTRY/DimensionValues/"
+)
+
+valuesquery$status_code
+
+dimensionvalues <- content(valuesquery, "parsed")
+
+for(i in 1:length(dimensionvalues$value)) {
+  is.na(dimensionvalues$value[[i]]) <- dimensionvalues$value[[i]] == "NULL"
+}
+
+dimensionvalues <- lapply(dimensionvalues$value, function(b){
+  data.frame(
+    Code            = b$Code,
+    Title           = b$Title,
+    Dimension       = b$Dimension,
+    ParentDimension = b$ParentDimension,
+    ParentCode      = b$ParentCode,
+    ParentTitle     = b$ParentTitle
+  )
+})
+dimensionvalues <- do.call(rbind, dimensionvalues)
+head(dimensionvalues)
+```
+
+Retrieving a list of available indicators
+```{r}
+indicatorsquery <- GET(
+  url = "https://ghoapi.azureedge.net/api/Indicator/"
+)
+
+indicatorsquery$status_code
+
+indicators <- content(indicatorsquery, "parsed")
+
+indicators <- lapply(indicators$value, function(c){
+  data.frame(
+    IndicatorCode  = c$IndicatorCode,
+    IndicatorName  = c$IndicatorName,
+    Language       = c$Language
+  )
+})
+indicators <- do.call(rbind, indicators)
+head(dimensionvalues)
+```
+
+Retrieving indicator (malaria example) data
+```{r}
+malariaquery <- GET(
+  url = "https://ghoapi.azureedge.net/api/MALARIA002/"
+)
+
+malariaquery$status_code
+
+malaria <- content(malariaquery, "parsed")
+
+malaria$value[[1]]$Id
+
+#Too complicated at this point
+```
+
+Retrieving from The World Bank API
+https://datahelpdesk.worldbank.org/knowledgebase/articles/898599-indicator-api-queries
+```{r}
+WBindicatorsquery <- GET(
+  url = "http://api.worldbank.org/v2/indicator/NY.GDP.MKTP.CD?source=11"
+)
+
+WBindicatorsquery$status_code
+
+WBI <- content(WBindicatorsquery, "text")
+
+WBI2 <- read_xml(WBI)
+
+WBI3 <- as_list(WBI2)
+
+
+
+WBindicators3 <- lapply(WBindicators$data$data, function(d){
+  data.frame(
+    Indicator = d$indicator[[1]],
+    Country   = d$country[[1]]
+  )
+})
+
+#Below doesn't work yet
+#WBindicators3 <- do.call(rbind, WBindicators)
+```
+
+indicators <- lapply(indicators$value, function(c){
+  data.frame(
+    IndicatorCode  = c$IndicatorCode,
+    IndicatorName  = c$IndicatorName,
+    Language       = c$Language
+  )
+})
+indicators <- do.call(rbind, indicators)
+head(dimensionvalues)
