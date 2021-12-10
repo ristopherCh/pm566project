@@ -1,0 +1,9 @@
+\contentsline {section}{Introduction}{1}{section*.2}%
+\contentsline {section}{The COVID-19 pandemic in the US}{2}{section*.3}%
+\contentsline {section}{The drug overdose crisis in the US}{3}{section*.4}%
+\contentsline {section}{How has COVID-19 affected the overdose crisis?}{5}{section*.5}%
+\contentsline {subsection}{COVID-19 associated unemployment and deaths by overdose}{7}{section*.6}%
+\contentsline {subsection}{COVID-19 associated economic slowdown and deaths by overdose}{10}{section*.7}%
+\contentsline {section}{Conclusion and Summary}{11}{section*.8}%
+\contentsline {section}{Methods}{12}{section*.9}%
+\contentsline {section}{Sources}{12}{section*.10}%
